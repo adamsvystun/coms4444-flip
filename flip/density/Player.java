@@ -5,10 +5,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.HashMap;
-
+import java.util.ArrayList;
+import java.lang.Math;
 import javafx.util.Pair;
 
-import java.util.ArrayList;
 
 import flip.sim.Point;
 import flip.sim.Board;
@@ -27,7 +27,9 @@ public class Player implements flip.sim.Player {
         INITIAL_STATE,
         WALL,
         FORWARD,
-    };
+    }
+
+    ;
 
     private State currentState = State.INITIAL_STATE;
 
@@ -64,21 +66,29 @@ public class Player implements flip.sim.Player {
         return moves;
     }
 
-	public void updateState() {
+    public void updateState() {
         switch (currentState) {
             case INITIAL_STATE: {
-                if(checkIfWallStrategyShouldBeUsed()) {
+                if (checkIfWallStrategyShouldBeUsed()) {
                     currentState = State.WALL;
                 } else {
                     currentState = State.FORWARD;
                 }
             }
         }
-	}
+    }
 
-	public boolean checkIfWallStrategyShouldBeUsed() {
+    public boolean checkIfWallStrategyShouldBeUsed() {
         return false;
-	}
+    }
+
+    double[] wallPointCenters11 = {
+            -17.268, -13.804, -10.34, -6.876, -3.412, 0.052, 3.516, 6.98, 10.444, 13.908, 17.372
+    }
+
+    private double[] wallPointCenters12 = {
+            -18.0, -15.0, -12.0, -9.0, -6.0, -3.0, 3.0, 6.0, 9.0, 12.0, 15.0, 18.0
+    }
 
     public List<Pair<Integer, Point>> getWallMoves(
             List<Pair<Integer, Point>> moves,
@@ -86,15 +96,38 @@ public class Player implements flip.sim.Player {
             HashMap<Integer, Point> player_pieces,
             HashMap<Integer, Point> opponent_pieces
     ) {
-        return moves;
+        double wallX = 40;
+        int[] coinsConnections = new int[12];
+        int[] positionsToRecalculate = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+        for (int i = 0; i < positionsToRecalculate.length; i++) {
+            int positionIndex = popositionsToRecalculate[i];
+            double y = wallPointCenters12[i]
+            Integer coin = findClosesPoint(player_pieces, wallX, y);
+            coinsConnections[i] = coin;
+        }
+        return moves
+    }
+
+    private Integer findClosesPoint(HashMap<Integer, Point> player_pieces, double x, double y) {
+        double minDistance = 120;
+        Integer minCoinIndex = -1;
+        for (int i = 0; i < n; i++) {
+            Point point = player_pieces.get(i);
+            distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2));
+            if(distance < minDistance) {
+                minDistance = distance;
+                minCoinIndex = i;
+            }
+        }
+        return minCoinIndex
     }
 
     public List<Pair<Integer, Point>> getDensityMoves(
             List<Pair<Integer, Point>> moves,
             Integer num_moves,
-			HashMap<Integer, Point> player_pieces,
-			HashMap<Integer, Point> opponent_pieces
-	) {
+            HashMap<Integer, Point> player_pieces,
+            HashMap<Integer, Point> opponent_pieces
+    ) {
         int sign = isplayer1 ? -1 : 1;
         int low1 = Integer.MAX_VALUE, low2 = Integer.MAX_VALUE, low1Id = -1, low2Id = -1;
         for (int i = 0; i < n; i++) {
