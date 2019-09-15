@@ -18,8 +18,8 @@ public class Player implements flip.sim.Player
 	private boolean isplayer1;
 	private Integer n;
 	private Double diameter_piece;
-	private Double distance = 5.0;
-	private Double density_cone_height = 5.0;
+	private Double distance = 3.73; // ~= 2 + sqrt(3)
+	private Double density_cone_height = 4.0;
 	private Double density_lane_gap = 1.0;
 	private Integer threadfold = 30;
 
