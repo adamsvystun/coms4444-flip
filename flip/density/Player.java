@@ -23,12 +23,13 @@ public class Player implements flip.sim.Player {
     private Double distance = 5.0;
     private Integer threadfold = 30;
 
-    private enum Strategy {
+    private enum State {
+        INITIAL_STATE,
         WALL,
-        DENSITY_FORWARD,
-        RANDOM_FALLBACK
-    }
+        FORWARD,
+    };
 
+    private State currentState = State.INITIAL_STATE;
 
     public Player() {
         random = new Random(seed);
@@ -45,41 +46,56 @@ public class Player implements flip.sim.Player {
     }
 
     public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
-        updateStrategy();
+        updateState();
 
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-        switch (currentStragety) {
-            case Strategy.WALL: {
-                moves = getWallMoves(num_moves, player_pieces, opponent_pieces, isplayer1)
+        switch (currentState) {
+            case WALL: {
+                moves = getWallMoves(moves, num_moves, player_pieces, opponent_pieces);
             }
-            case Strategy.DENSITY_FORWARD: {
-                moves = getDensityMoves(num_moves, player_pieces, opponent_pieces, isplayer1)
-            }
-            case Strategy.RANDOM_FALLBACK: {
-                moves = getRandomMoves(num_moves, player_pieces, opponent_pieces, isplayer1)
+            case FORWARD: {
+                moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
             }
         }
 
-        return moves
+        moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
+
+        return moves;
     }
 
-	public void updateStrategy() {
-
+	public void updateState() {
+        switch (currentState) {
+            case INITIAL_STATE: {
+                if(checkIfWallStrategyShouldBeUsed()) {
+                    currentState = State.WALL;
+                } else {
+                    currentState = State.FORWARD;
+                }
+            }
+        }
 	}
 
 	public boolean checkIfWallStrategyShouldBeUsed() {
-
+        return false;
 	}
 
-    public List<Pair<Integer, Point>> getDesnityMoves(
-			Integer num_moves,
+    public List<Pair<Integer, Point>> getWallMoves(
+            List<Pair<Integer, Point>> moves,
+            Integer num_moves,
+            HashMap<Integer, Point> player_pieces,
+            HashMap<Integer, Point> opponent_pieces
+    ) {
+        return moves;
+    }
+
+    public List<Pair<Integer, Point>> getDensityMoves(
+            List<Pair<Integer, Point>> moves,
+            Integer num_moves,
 			HashMap<Integer, Point> player_pieces,
-			HashMap<Integer, Point> opponent_pieces,
-			boolean isplayer1
+			HashMap<Integer, Point> opponent_pieces
 	) {
         int sign = isplayer1 ? -1 : 1;
-        List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
         int low1 = Integer.MAX_VALUE, low2 = Integer.MAX_VALUE, low1Id = -1, low2Id = -1;
         for (int i = 0; i < n; i++) {
             Point curr_position = player_pieces.get(i);
@@ -121,13 +137,11 @@ public class Player implements flip.sim.Player {
     }
 
     public List<Pair<Integer, Point>> getRandomMoves(
+            List<Pair<Integer, Point>> moves,
             Integer num_moves,
             HashMap<Integer, Point> player_pieces,
-            HashMap<Integer, Point> opponent_pieces,
-            boolean isplayer1
+            HashMap<Integer, Point> opponent_pieces
     ) {
-        List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
-
         int num_trials = 30;
         int i = 0;
 
