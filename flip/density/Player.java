@@ -7,12 +7,14 @@ import java.util.Random;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.lang.Math;
+
 import javafx.util.Pair;
 
 
 import flip.sim.Point;
 import flip.sim.Board;
 import flip.sim.Log;
+
 
 public class Player implements flip.sim.Player {
     private int seed = 42;
@@ -98,28 +100,87 @@ public class Player implements flip.sim.Player {
     ) {
         double wallX = 40;
         int[] coinsConnections = new int[12];
-        int[] positionsToRecalculate = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+        List<Integer> usedCoins;
+        Stack<Integer> positionsToRecalculate = new Stack<Integer>({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11});
         for (int i = 0; i < positionsToRecalculate.length; i++) {
-            int positionIndex = popositionsToRecalculate[i];
-            double y = wallPointCenters12[i]
-            Integer coin = findClosesPoint(player_pieces, wallX, y);
-            coinsConnections[i] = coin;
+            int positionIndex = positionsToRecalculate.pop();
+            double y = wallPointCenters12[positionIndex];
+            Pair<Integer, Double> coinDistancePair = findClosesPoint(player_pieces, wallX, y, usedCoins);
+            Integer coin = coinDistancePair.getKey();
+            Double coinDistance = coinDistancePair.getValue();
+            usedCoins.add(coin);
+            coinsConnections[positionIndex] = coin;
+        }
+        boolean[] coinsSet = new boolean[12] (false);
+        for (int i = 0; i < coinsSet.length; i++) {
+            if (coinsSet[i]) {
+                continue;
+            }
+            int coin = coinsConnections[i]
+            double y = wallPointCenters12[i];
+            moves = findMovesToPoint(
+                coin, new Point(wallX, y), moves, num_moves, player_pieces, opponent_pieces
+            );
+            if(moves.length >= num_moves) {
+                break;
+            }
         }
         return moves
     }
 
-    private Integer findClosesPoint(HashMap<Integer, Point> player_pieces, double x, double y) {
+    private Pair<Integer, Double> findClosesPoint(
+            HashMap<Integer, Point> player_pieces, double x, double y, List<Integer> usedCoins
+    ) {
         double minDistance = 120;
         Integer minCoinIndex = -1;
         for (int i = 0; i < n; i++) {
             Point point = player_pieces.get(i);
+            if (usedCoins.contains(i)) {
+                continue;
+            }
             distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2));
-            if(distance < minDistance) {
+            if (distance < minDistance) {
                 minDistance = distance;
                 minCoinIndex = i;
             }
         }
-        return minCoinIndex
+        return new Pair(minCoinIndex, minDistance)
+    }
+
+    public List<Pair<Integer, Point>> findMovesToPoint(
+            Integer coin,
+            Point goal,
+            Double allowedError,
+            List<Pair<Integer, Point>> moves,
+            Integer num_moves,
+            HashMap<Integer, Point> player_pieces,
+            HashMap<Integer, Point> opponent_pieces
+    ) {
+        Point coinPoint = player_pieces.get(coin);
+        Point newPosition = new Point(coinPoint);
+        boolean goalReached = false;
+        while(!goalReached && moves.length < num_moves) {
+            Point newPosition = new Point(newPosition);
+            double distance = getDistance(newPosition, goal);
+            if(distance > diameter_piece * 3.0 / 2.0) {
+                double theta = getAngle(newPosition, goal);
+                double deltaX = diameter_piece * Math.cos(theta);
+                double deltaY = diameter_piece * Math.sin(theta);
+
+                newPosition.x = isplayer1 ? newPosition.x - delta_x : newPosition.x + delta_x;
+                newPosition.y += delta_y;
+                Pair<Integer, Point> move = new Pair<Integer, Point>(coin, newPosition);
+                if(check_validity(move, player_pieces, opponent_pieces)) {
+                    moves.append(move);
+                }
+            } else {
+                if(distance % 2 < allowedError) {
+                    // go direct
+                } else {
+                    Point intermediatePoint = new Point();
+                }
+            }
+        }
     }
 
     public List<Pair<Integer, Point>> getDensityMoves(
