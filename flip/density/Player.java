@@ -162,7 +162,7 @@ public class Player implements flip.sim.Player {
         while(!goalReached && moves.length < num_moves) {
             Point newPosition = new Point(newPosition);
             double distance = getDistance(newPosition, goal);
-            if(distance > diameter_piece * 3.0 / 2.0) {
+            if(distance > diameter_piece * 1.5) {
                 double theta = getAngle(newPosition, goal);
                 double deltaX = diameter_piece * Math.cos(theta);
                 double deltaY = diameter_piece * Math.sin(theta);
@@ -175,12 +175,33 @@ public class Player implements flip.sim.Player {
                 }
             } else {
                 if(distance % 2 < allowedError) {
-                    // go direct
+                    double theta = getAngle(newPosition, goal);
+                    double deltaX = diameter_piece * Math.cos(theta);
+                    double deltaY = diameter_piece * Math.sin(theta);
+
+                    newPosition.x = isplayer1 ? newPosition.x - delta_x : newPosition.x + delta_x;
+                    newPosition.y += delta_y;
+                    Pair<Integer, Point> move = new Pair<Integer, Point>(coin, newPosition);
+                    if(check_validity(move, player_pieces, opponent_pieces)) {
+                        moves.append(move);
+                    }
                 } else {
-                    Point intermediatePoint = new Point();
+
+                    Pair<Integer, Point> move = new Pair<Integer, Point>(coin, newPosition);
+                    if(check_validity(move, player_pieces, opponent_pieces)) {
+                        moves.append(move);
+                    }
                 }
             }
         }
+    }
+
+    public double getDistance(Point p1, Point p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    }
+
+    public double getAngle(Point p1, Point p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
     }
 
     public List<Pair<Integer, Point>> getDensityMoves(
