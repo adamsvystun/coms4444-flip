@@ -42,7 +42,7 @@ public class Player implements flip.sim.Player
 
 	public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1)
 	{
-		boolean sign = isplayer1 ? -1 : 1;
+		int sign = isplayer1 ? -1 : 1;
 		List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 		int low1 = Integer.MAX_VALUE, low2 = Integer.MAX_VALUE, low1Id = -1, low2Id = -1;
 		for (int i = 0; i < n; i++) {
