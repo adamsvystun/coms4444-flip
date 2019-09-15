@@ -53,10 +53,10 @@ public class Player implements flip.sim.Player
 			int count = 0;
 			for (Point point : opponent_pieces.values()) {
 				// Two lines parameters
-				double k1 = distance / density_cone_height;
-				double b1 = curr_position.y  - distance / density_cone_height * (curr_position.x + density_lane_gap);
-				double k2 = - distance / density_cone_height;
-				double b2 = curr_position.y  + distance / density_cone_height * (curr_position.x + density_lane_gap);
+				double k1 = -sign * distance / density_cone_height;
+				double b1 = curr_position.y  - k1 * (curr_position.x - sign * density_lane_gap);
+				double k2 = sign * distance / density_cone_height;
+				double b2 = curr_position.y  - k2 * (curr_position.x - sign * density_lane_gap);
 				double x = point.x;
 				double y = point.y;
 				boolean condition1 = y < (curr_position.y + distance);
@@ -95,10 +95,8 @@ public class Player implements flip.sim.Player
 		int num_trials = 30;
 		int i = 0;
 
-		 while(moves.size()!= num_moves && i<num_trials)
-		 {
-			 
-		 	Integer piece_id = random.nextInt(n);
+		while(moves.size()!= num_moves && i<num_trials)  {
+			Integer piece_id = random.nextInt(n);
 			
 		 	Point curr_position = player_pieces.get(piece_id);
 			if(((isplayer1 && curr_position.x < -threadfold)
