@@ -119,7 +119,7 @@ public class Player implements flip.sim.Player {
             int coin = coinsConnections[i]
             double y = wallPointCenters12[i];
             moves = findMovesToPoint(
-                coin, new Point(wallX, y), moves, num_moves, player_pieces, opponent_pieces
+                    coin, new Point(wallX, y), moves, num_moves, player_pieces, opponent_pieces
             );
             if(moves.length >= num_moves) {
                 break;
@@ -200,8 +200,13 @@ public class Player implements flip.sim.Player {
         return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
     }
 
-    public double getAngle(Point p1, Point p2) {
-        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    public double getAngle(Point v1, Point v2) {
+        return Math.atan2(v1.x * v2.y - v1.y * v2.x, v1.x * v2.x + v1.y * v2.y);
+    }
+
+    public double getAbsoluteAngle(Point v) {
+        Point u = new Point(0, 1);
+        return getAngle(v, u);
     }
 
     public List<Pair<Integer, Point>> getDensityMoves(
