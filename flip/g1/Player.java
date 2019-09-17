@@ -34,6 +34,9 @@ public class Player implements flip.sim.Player {
         WALL_FLIP,
         WALL_FLIP_PREPARE,
         FORWARD,
+        FINDING_GAP,
+        IN_GAP,
+        STUCK,
         RANDOM
     }
 
@@ -69,6 +72,10 @@ public class Player implements flip.sim.Player {
                     moves = getWallMoves(moves, num_moves, player_pieces, opponent_pieces);
                     break;
                 }
+                case FINDING_GAP: {
+                    moves = getGapFindMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    break;
+                }
                 case FORWARD: {
                     moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
                     break;
@@ -96,6 +103,8 @@ public class Player implements flip.sim.Player {
             case INITIAL_STATE: {
                 if (checkIfWallStrategyShouldBeUsed()) {
                     currentState = State.WALL_BUILDING;
+                } else if(checkIfGapStrategyShouldBeUsed()) {
+                    currentState = State.FINDING_GAP;
                 } else {
                     currentState = State.FORWARD;
                 }
@@ -115,11 +124,15 @@ public class Player implements flip.sim.Player {
     }
 
     public boolean checkIfWallStrategyShouldBeUsed() {
-        return true;
+        return false;
     }
 
     public boolean checkIfWallFlipCanBeDone() {
         return false;
+    }
+
+    public boolean checkIfGapStrategyShouldBeUsed() {
+        return true;
     }
 
     public boolean checkIfWallFlipShouldBePrepared(HashMap<Integer, Point> player_pieces) {
@@ -134,6 +147,16 @@ public class Player implements flip.sim.Player {
     double[] wallPointCenters11 = {
             -17.268, -13.804, -10.34, -6.876, -3.412, 0.052, 3.516, 6.98, 10.444, 13.908, 17.372
     };
+
+    public List<Pair<Integer, Point>> getGapFindMoves(
+            List<Pair<Integer, Point>> moves,
+            Integer num_moves,
+            HashMap<Integer, Point> player_pieces,
+            HashMap<Integer, Point> opponent_pieces
+    ) {
+        //@TODO Gap Finding;
+        return moves;
+    }
 
     public List<Pair<Integer, Point>> getWallMoves(
             List<Pair<Integer, Point>> moves,
@@ -167,6 +190,9 @@ public class Player implements flip.sim.Player {
             if (moves.size() >= num_moves) {
                 break;
             }
+        }
+        if(moves.size() == 0) {
+            currentState = State.WALL_BUILT;
         }
         return moves;
     }
