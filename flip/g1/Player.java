@@ -5,8 +5,6 @@ import java.util.List;
 
 import javafx.util.Pair;
 
-import java.util.TreeMap;
-
 import flip.sim.Point;
 import flip.sim.Board;
 import flip.sim.Log;
@@ -25,6 +23,12 @@ public class Player implements flip.sim.Player {
     private Double density_cone_height = 4.0;
     private Double density_lane_gap = 1.0;
     private Integer sign;
+    private Integer wall_back = 20 - 2;
+    private Integer wall_front = 20 + 4;
+    private Integer threshold_to_attach_wall = 3;
+    private Double same_x_diff = 1.0;
+    private Double same_y_diff = 3.5;
+    private Integer dis_to_move_head = 6;
 
 
     private enum State {
@@ -94,7 +98,6 @@ public class Player implements flip.sim.Player {
                 moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
             }
         }
-
         return moves;
     }
 
@@ -135,6 +138,16 @@ public class Player implements flip.sim.Player {
         return true;
     }
 
+    public List<Point> getGapStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
+        //Add all the points at the valid range of formming wall
+        List<Point> wallList = new ArrayList<>();
+        for (Point point : opponent_pieces.values()){
+            if ((!isplayer1 && point.x > wall_back && point.x < wall_front) || (isplayer1 && point.x < -wall_back && point.x > -wall_front))
+                wallList.add(point);
+        }
+        return wallList;
+    }
+
     public boolean checkIfWallFlipShouldBePrepared(HashMap<Integer, Point> player_pieces) {
         for (Point coin : player_pieces.values()) {
             if (Math.abs(coin.x) > 20) {
@@ -154,8 +167,42 @@ public class Player implements flip.sim.Player {
             HashMap<Integer, Point> player_pieces,
             HashMap<Integer, Point> opponent_pieces
     ) {
-        //@TODO Gap Finding;
-        return moves;
+        List<Point> list = getGapStrategyShouldBeUsed(opponent_pieces);
+        Collections.sort(list, (a, b) -> Double.compare(b.y, a.y));
+        // Add the bottom line
+        list.add(new Point(list.get(list.size() - 1).x, -20));
+        double maxGap = -1;
+        double top = -1;
+        double down = -1;
+        Point pre = new Point(list.get(0).x, 20);
+        double x = -1;
+        Log.log("Size" + list.size());
+        for (int i = 0; i < list.size(); i++) {
+            double gap = pre.y - list.get(i).y;
+            Log.log("GAP " + gap);
+            if (gap > maxGap) {
+                top = pre.y;
+                down = list.get(i).y;
+                maxGap = gap;
+                x = isplayer1 ? Math.min(pre.x, list.get(i).x) : Math.max(pre.x, list.get(i).x);
+            }
+            pre = list.get(i);
+        }
+        Point gapPoint = new Point(x, (top + down) / 2);
+        // For now, just move the quickest one that falls into the maximum gap.
+        int minId = -1;
+        double minDis = Integer.MAX_VALUE;
+        for (Map.Entry<Integer, Point> entry : player_pieces.entrySet()) {
+            if (shouldStop(player_pieces, opponent_pieces, entry.getKey())) continue;
+            Point p = entry.getValue();
+            double dist = getDistance(p, gapPoint);
+            if (dist < minDis) {
+                minDis = dist;
+                minId = entry.getKey();
+            }
+        }
+        Log.log("Gap Point: " + gapPoint.x +","+gapPoint.y);
+        return findMovesToPoint(moves, minId, player_pieces.get(minId), gapPoint, num_moves, player_pieces, opponent_pieces);
     }
 
     public List<Pair<Integer, Point>> getWallMoves(
@@ -306,21 +353,8 @@ public class Player implements flip.sim.Player {
         int low1 = Integer.MAX_VALUE, low2 = Integer.MAX_VALUE, low1Id = -1, low2Id = -1;
 
         for (int i = 0; i < n; i++) {
-            int count_behind_players = 0;
+            if (shouldStop(player_pieces, opponent_pieces, i)) continue;
             Point curr_position = player_pieces.get(i);
-            //count the number of nodes incoming
-            for (Point point : player_pieces.values()) {
-                double y = point.y;
-                double x = point.x;
-                if (y > curr_position.y - height_to_count_players && y < curr_position.y + height_to_count_players
-                        && ((isplayer1 && x > curr_position.x) || (!isplayer1 && x < curr_position.x)))
-                    count_behind_players++;
-            }
-            Pair<Integer, Point> move = new Pair<Integer, Point>(i, new Point(curr_position.x + sign * 2, curr_position.y));
-            //Choose 2.5 not 2 to allow some intersection that stops the coin moving into the stop area.
-            if (((isplayer1 && curr_position.x < -threshold - count_behind_players * 2.5)
-                    || (!isplayer1 && curr_position.x > threshold + count_behind_players * 2.5)) ||
-                    !check_validity(move, player_pieces, opponent_pieces)) continue;
             int count = 0;
             for (Point point : opponent_pieces.values()) {
                 // Two lines parameters
@@ -497,6 +531,26 @@ public class Player implements flip.sim.Player {
         valid = valid && Board.check_within_bounds(move);
         return valid;
 
+    }
+
+
+    boolean shouldStop(HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, int coinId) {
+        int count_behind_players = 0;
+        Point curr_position = player_pieces.get(coinId);
+        //count the number of nodes incoming
+        for (Point point : player_pieces.values()) {
+            double y = point.y;
+            double x = point.x;
+            if (y > curr_position.y - height_to_count_players && y < curr_position.y + height_to_count_players
+                    && ((isplayer1 && x > curr_position.x && x < curr_position.x + dis_to_move_head)
+                    || (!isplayer1 && x < curr_position.x && x > curr_position.x - dis_to_move_head)))
+                count_behind_players++;
+        }
+        Pair<Integer, Point> move = new Pair<Integer, Point>(coinId, new Point(curr_position.x + sign * 2, curr_position.y));
+        //Choose 2.5 not 2 to allow some intersection that stops the coin moving into the stop area.
+        return (((isplayer1 && curr_position.x < -threshold - count_behind_players * 2.5)
+                || (!isplayer1 && curr_position.x > threshold + count_behind_players * 2.5)) ||
+                !check_validity(move, player_pieces, opponent_pieces));
     }
 
 }
