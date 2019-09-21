@@ -154,7 +154,7 @@ public class Player implements flip.sim.Player {
     }
 
     public boolean checkIfWallStrategyShouldBeUsed() {
-        return true;
+        return n >= 12;
     }
 
     public boolean checkIfWallFlipCanBeDone() {
@@ -162,7 +162,7 @@ public class Player implements flip.sim.Player {
     }
 
     public boolean checkIfGapStrategyShouldBeUsed() {
-        return false;
+        return true;
     }
 
     public List<Point> getGapStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
