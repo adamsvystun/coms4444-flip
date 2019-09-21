@@ -234,7 +234,7 @@ public class Player implements flip.sim.Player {
             HashMap<Integer, Point> player_pieces,
             HashMap<Integer, Point> opponent_pieces
     ) {
-        Integer[] coinPriority = getWallCoinPriority(opponent_pieces);
+        Integer[] coinPriority = getWallCoinPriorityByDistance(opponent_pieces);
         for (int i = 0; i < coinPriority.length; i++) {
             int coinIndex = coinPriority[i];
             if (coinsSet[coinIndex]) {
@@ -279,6 +279,32 @@ public class Player implements flip.sim.Player {
             indices[i] = indices[indices.length - i - 1];
             indices[indices.length - i - 1] = temp;
         }
+        return indices;
+    }
+
+    private Integer[] getWallCoinPriorityByDistance(HashMap<Integer, Point> pieces) {
+        double densityDelta = 3.0;
+        Double[] laneCounts = new Double[11];
+        for (int i = 0; i < 11; i++) {
+            laneCounts[i] = 200.0;
+        }
+        for (int i = 0; i < 11; i++) {
+            double wallY = wallPointCenters11[i];
+            for(Point oponentCoin: pieces.values()) {
+                double distance = getDistance(oponentCoin, new Point(wallY, wallX));
+                if((oponentCoin.y > (wallY - densityDelta)) && (oponentCoin.y < (wallY + densityDelta)) && distance < laneCounts[i]) {
+                    laneCounts[i] = distance;
+                }
+            }
+        }
+        ArrayIndexDoubleComparator comparator = new ArrayIndexDoubleComparator(laneCounts);
+        Integer[] indices = comparator.createIndexArray();
+        Arrays.sort(indices, comparator);
+//        for(int i = 0; i < indices.length / 2; i++) {
+//            int temp = indices[i];
+//            indices[i] = indices[indices.length - i - 1];
+//            indices[indices.length - i - 1] = temp;
+//        }
         return indices;
     }
 
@@ -605,6 +631,33 @@ class ArrayIndexComparator implements Comparator<Integer>
     private final Integer[] array;
 
     public ArrayIndexComparator(Integer[] array)
+    {
+        this.array = array;
+    }
+
+    public Integer[] createIndexArray()
+    {
+        Integer[] indexes = new Integer[array.length];
+        for (int i = 0; i < array.length; i++)
+        {
+            indexes[i] = i; // Autoboxing
+        }
+        return indexes;
+    }
+
+    @Override
+    public int compare(Integer index1, Integer index2)
+    {
+        // Autounbox from Integer to int to use as array indexes
+        return array[index1].compareTo(array[index2]);
+    }
+}
+
+class ArrayIndexDoubleComparator implements Comparator<Integer>
+{
+    private final Double[] array;
+
+    public ArrayIndexDoubleComparator(Double[] array)
     {
         this.array = array;
     }
