@@ -291,8 +291,8 @@ public class Player implements flip.sim.Player {
         for (int i = 0; i < 11; i++) {
             double wallY = wallPointCenters11[i];
             for(Point oponentCoin: pieces.values()) {
-                double distance = getDistance(oponentCoin, new Point(wallY, wallX));
-                if((oponentCoin.y > (wallY - densityDelta)) && (oponentCoin.y < (wallY + densityDelta)) && distance < laneCounts[i]) {
+                double distance = getDistance(oponentCoin, new Point(wallX, wallY));
+                if(distance < laneCounts[i]) {
                     laneCounts[i] = distance;
                 }
             }
