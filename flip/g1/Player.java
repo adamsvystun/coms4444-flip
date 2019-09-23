@@ -9,6 +9,7 @@ import flip.sim.Board;
 import flip.sim.Log;
 
 import flip.g1.Hungarian;
+import flip.g1.Vertex;
 
 
 public class Player implements flip.sim.Player {
@@ -50,6 +51,9 @@ public class Player implements flip.sim.Player {
         WALL_BUILT,
         WALL_FLIP,
         WALL_FLIP_PREPARE,
+        TRAPING,
+        TRAPING_FORWARD,
+        TRAPING_ClEANUP,
         FORWARD,
         FINDING_GAP,
         IN_GAP,
@@ -104,6 +108,10 @@ public class Player implements flip.sim.Player {
 
         while (moves.size() < num_moves) {
             switch (currentState) {
+                case TRAPING: {
+                    moves = getTrapingMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    break;
+                }
                 case WALL_BUILDING: {
                     moves = getWallMoves(moves, num_moves, player_pieces, opponent_pieces);
                     break;
@@ -154,6 +162,8 @@ public class Player implements flip.sim.Player {
                     currentState = State.WALL_BUILDING;
                 } else if(checkIfGapStrategyShouldBeUsed()) {
                     currentState = State.FINDING_GAP;
+                } else if(checkIfTrapingStrategyShouldBeUsed(opponent_pieces)) {
+                    currentState = State.TRAPING;
                 } else {
                     currentState = State.FORWARD;
                 }
@@ -176,12 +186,129 @@ public class Player implements flip.sim.Player {
         return n >= 12;
     }
 
+    public boolean checkIfTrapingStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
+        if(n < 5 || n > 10){
+            return false;
+        }
+        boolean opponentBehind = false;
+        for (Point coin: opponent_pieces.values()) {
+            if((isplayer1 && coin.x < -21) || (!isplayer1 && coin.x > 21)) {
+                opponentBehind = true;
+                break;
+            }
+        }
+        if(!opponentBehind) {
+            return false;
+        }
+        return true;
+    }
+
     public boolean checkIfWallFlipCanBeDone() {
         return false;
     }
 
     public boolean checkIfGapStrategyShouldBeUsed() {
-        return true;
+        return false;
+    }
+
+    public List<Pair<Integer, Point>> getTrapingMoves(
+            List<Pair<Integer, Point>> moves,
+            Integer num_moves,
+            HashMap<Integer, Point> player_pieces,
+            HashMap<Integer, Point> opponent_pieces
+    ) {
+        Point goalCoin = null;
+        boolean isBorder = false;
+        // Try finding coin near border
+        for (Point coin: opponent_pieces.values()) {
+            if(coin.y < -18 || coin.y > 18) {
+                goalCoin = coin;
+                isBorder = true;
+                break;
+            }
+        }
+        // Find the furthest coin of the opponent
+        if(!isBorder) {
+            for (Point coin: opponent_pieces.values()) {
+                if(goalCoin == null || coin.x > goalCoin.x) {
+                    goalCoin = coin;
+                }
+            }
+        }
+        Log.log("goalCoin: " + goalCoin.toString());
+        // Find goals points for encirclement
+        if(goalCoin == null) {
+            return moves;
+        }
+        List<Point> goalPoints = new Vector<Point>();
+        if(isBorder) {
+            if(goalCoin.y < -18) {
+                goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
+                goalPoints.add(new Point(goalCoin.x + 2.1, goalCoin.y));
+                goalPoints.add(new Point(goalCoin.x - 2.1, goalCoin.y));
+            } else {
+                goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
+                goalPoints.add(new Point(goalCoin.x + 2.1, goalCoin.y));
+                goalPoints.add(new Point(goalCoin.x - 2.1, goalCoin.y));
+            }
+        } else {
+            goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
+            goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
+            goalPoints.add(new Point(goalCoin.x + 2.1, goalCoin.y));
+            goalPoints.add(new Point(goalCoin.x - 2.1, goalCoin.y));
+        }
+        Log.log("goalPoints: " + goalPoints.toString());
+        // Find the coin furthest away
+        List<Integer> usedCoins = new Vector<Integer>();
+        Double maxDistance = 0.0;
+        List<Pair<Point, Integer>> goalCoinMap = new Vector<Pair<Point, Integer>>();
+        Integer furthestCoinIndex = null;
+        Point furthestGoalPoint = null;
+        for (Point goalPoint: goalPoints) {
+            Pair<Integer, Double> result = findClosesPoint(player_pieces, goalPoint.x, goalPoint.y, usedCoins);
+            Integer coinIndex = result.getKey();
+            Double distance = result.getValue();
+            goalCoinMap.add(new Pair(goalPoint, coinIndex));
+            furthestGoalPoint = goalPoint;
+            if(distance > maxDistance) {
+                furthestCoinIndex = coinIndex;
+                maxDistance = distance;
+            }
+            usedCoins.add(coinIndex);
+        }
+        Log.log("furthestCoinIndex: " + furthestCoinIndex.toString());
+        if(furthestGoalPoint == null || furthestCoinIndex == null) {
+            return moves;
+        }
+        // Move the furthest away coin
+        moves = findMovesToPoint(
+                moves,
+                furthestCoinIndex,
+                player_pieces.get(furthestCoinIndex),
+                furthestGoalPoint,
+                num_moves,
+                player_pieces,
+                opponent_pieces
+        );
+        if (moves.size() < num_moves) {
+            for(Pair<Point, Integer> mapping: goalCoinMap) {
+                Point goalPoint = mapping.getKey();
+                Integer coinIndex = mapping.getValue();
+                moves = findMovesToPoint(
+                        moves,
+                        coinIndex,
+                        player_pieces.get(coinIndex),
+                        goalPoint,
+                        num_moves,
+                        player_pieces,
+                        opponent_pieces
+                );
+                if(moves.size() >= num_moves) {
+                    break;
+                }
+            }
+        }
+        return moves;
     }
 
     public List<Point> getGapStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
@@ -461,7 +588,7 @@ public class Player implements flip.sim.Player {
     private Pair<Integer, Double> findClosesPoint(
             HashMap<Integer, Point> player_pieces, double x, double y, List<Integer> usedCoins
     ) {
-        double minDistance = 120;
+        double minDistance = 200;
         Integer minCoinIndex = -1;
         for (int i = 0; i < n; i++) {
             Point point = player_pieces.get(i);
