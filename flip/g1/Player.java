@@ -17,7 +17,7 @@ public class Player implements flip.sim.Player {
     private boolean isplayer1;
     private Integer n;
     private Double diameter_piece;
-    private Integer threshold = 22;
+    private Integer threshold = 21;
     private Integer boundary = 20;
     private Integer height_to_count_players = 2;
     private Double distance = 3.73; // ~= 2 + sqrt(3)
