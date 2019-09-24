@@ -2,6 +2,7 @@ package flip.g1;
 
 import java.util.*;
 import java.util.List;
+
 import javafx.util.Pair;
 
 import flip.sim.Point;
@@ -40,7 +41,9 @@ public class Player implements flip.sim.Player {
             -17.268, -13.804, -10.34, -6.876, -3.412, 0.052, 3.516, 6.98, 10.444, 13.908, 17.372
     };
     boolean[] coinsSet = new boolean[11];
-    List<Integer> trappingCoins = new Vector<Integer>();
+
+    // Trapping stuff
+    Integer trappingCoinIndex;
 
     private HashMap<Integer, Point> pieces;
 
@@ -61,7 +64,9 @@ public class Player implements flip.sim.Player {
         STUCK,
         BFS,
         RANDOM
-    };
+    }
+
+    ;
 
     private State currentState = State.INITIAL_STATE;
 
@@ -80,13 +85,16 @@ public class Player implements flip.sim.Player {
         this.diameter_piece = diameter_piece;
         this.pieces = pieces;
         this.wallX = -sign * 20.0;
-        if(n >= 11) {
+        if (n >= 11) {
             this.calculateMatching();
+        }
+        if (n < 11) {
+            this.calculateTrappingCoin();
         }
     }
 
     public void calculateMatching() {
-        if(n < 11) {
+        if (n < 11) {
             throw new Error("Can't build a wall with less than 11 pieces");
         }
         double[][] costMatrix = new double[11][n];
@@ -99,6 +107,44 @@ public class Player implements flip.sim.Player {
         }
         Hungarian hg = new Hungarian(costMatrix);
         this.wallMatching = hg.execute();
+    }
+
+    public void calculateTrappingCoin() {
+        Integer coinIndex = null;
+        Point goalCoin = null;
+        Integer isBorder = 0;
+        // Try finding coin near border
+        for (int i = 0; i < pieces.size(); i++) {
+            Point myCoin = pieces.get(i);
+            Point coin = new Point(-myCoin.x, myCoin.y);
+            if ((goalCoin == null || sign * coin.x > sign * goalCoin.x) && coin.y < -17) {
+                goalCoin = coin;
+                coinIndex = i;
+                isBorder = 1;
+            }
+            if ((goalCoin == null || sign * coin.x > sign * goalCoin.x) && coin.y > 17) {
+                goalCoin = coin;
+                coinIndex = i;
+                isBorder = 2;
+            }
+            if ((goalCoin == null || sign * coin.x > sign * goalCoin.x) && sign * coin.x > 57) {
+                goalCoin = coin;
+                coinIndex = i;
+                isBorder = 3;
+            }
+        }
+        // Find the furthest coin of the opponent
+        if (isBorder == 0) {
+            for (int i = 0; i < pieces.size(); i++) {
+                Point myCoin = pieces.get(i);
+                Point coin = new Point(-myCoin.x, myCoin.y);
+                if (goalCoin == null || sign * coin.x > sign * goalCoin.x) {
+                    goalCoin = coin;
+                    coinIndex = i;
+                }
+            }
+        }
+        trappingCoinIndex = coinIndex;
     }
 
     public List<Pair<Integer, Point>> getMoves(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces, boolean isplayer1) {
@@ -160,9 +206,9 @@ public class Player implements flip.sim.Player {
 //                }
                 else if (checkIfWallStrategyShouldBeUsed()) {
                     currentState = State.WALL_BUILDING;
-                } else if(checkIfGapStrategyShouldBeUsed()) {
+                } else if (checkIfGapStrategyShouldBeUsed()) {
                     currentState = State.FINDING_GAP;
-                } else if(checkIfTrapingStrategyShouldBeUsed(opponent_pieces)) {
+                } else if (checkIfTrapingStrategyShouldBeUsed(opponent_pieces)) {
                     currentState = State.TRAPING;
                 } else {
                     currentState = State.FORWARD;
@@ -187,17 +233,17 @@ public class Player implements flip.sim.Player {
     }
 
     public boolean checkIfTrapingStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
-        if(n < 5 || n > 10){
+        if (n < 5 || n > 10) {
             return false;
         }
         boolean opponentBehind = false;
-        for (Point coin: opponent_pieces.values()) {
-            if((isplayer1 && coin.x < -21) || (!isplayer1 && coin.x > 21)) {
+        for (Point coin : opponent_pieces.values()) {
+            if ((isplayer1 && coin.x < -21) || (!isplayer1 && coin.x > 21)) {
                 opponentBehind = true;
                 break;
             }
         }
-        if(!opponentBehind) {
+        if (!opponentBehind) {
             return false;
         }
         return true;
@@ -217,45 +263,21 @@ public class Player implements flip.sim.Player {
             HashMap<Integer, Point> player_pieces,
             HashMap<Integer, Point> opponent_pieces
     ) {
-        Point goalCoin = null;
-        Integer isBorder = 0;
-        // Try finding coin near border
-        for (Point coin: opponent_pieces.values()) {
-            if((goalCoin == null || sign * coin.x > sign * goalCoin.x) && coin.y < -17) {
-                goalCoin = coin;
-                isBorder = 1;
-            }
-            if((goalCoin == null || sign * coin.x > sign * goalCoin.x) && coin.y > 17) {
-                goalCoin = coin;
-                isBorder = 2;
-            }
-            if((goalCoin == null || sign * coin.x > sign * goalCoin.x) && sign * coin.x > 57) {
-                goalCoin = coin;
-                isBorder = 3;
-            }
-        }
-        // Find the furthest coin of the opponent
-        if(isBorder == 0) {
-            for (Point coin: opponent_pieces.values()) {
-                if(goalCoin == null || sign * coin.x > sign * goalCoin.x) {
-                    goalCoin = coin;
-                }
-            }
-        }
+        Point goalCoin = opponent_pieces.get(trappingCoinIndex);
         // Find goals points for encirclement
-        if(goalCoin == null) {
+        if (goalCoin == null) {
             return moves;
         }
         List<Point> goalPoints = new Vector<Point>();
-        if(isBorder == 1) {
+        if (goalCoin.y > 17) {
             goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
             goalPoints.add(new Point(goalCoin.x + 2.1, goalCoin.y));
             goalPoints.add(new Point(goalCoin.x - 2.1, goalCoin.y));
-        } else if(isBorder == 2) {
+        } else if (goalCoin.y < -17) {
             goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
             goalPoints.add(new Point(goalCoin.x + 2.1, goalCoin.y));
             goalPoints.add(new Point(goalCoin.x - 2.1, goalCoin.y));
-        } else if(isBorder == 3) {
+        } else if (sign * goalCoin.x > 57) {
             goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
             goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
             goalPoints.add(new Point(goalCoin.x - sign * 2.1, goalCoin.y));
@@ -267,10 +289,11 @@ public class Player implements flip.sim.Player {
         }
         // Find the coin furthest away
         List<Integer> usedCoins = new Vector<Integer>();
-        usedCoins.addAll(trappingCoins);
         List<Pair<Point, Integer>> goalCoinMap = new Vector<Pair<Point, Integer>>();
-        for (Point goalPoint: goalPoints) {
-            if(checkOurCoinInPlace(goalPoint, player_pieces)){
+        for (Point goalPoint : goalPoints) {
+            Integer c = checkOurCoinInPlace(goalPoint, player_pieces);
+            if (c != null) {
+                usedCoins.add(c);
                 continue;
             }
             Pair<Integer, Double> result = findClosesPoint(player_pieces, goalPoint.x, goalPoint.y, usedCoins);
@@ -278,12 +301,12 @@ public class Player implements flip.sim.Player {
             goalCoinMap.add(new Pair(goalPoint, coinIndex));
             usedCoins.add(coinIndex);
         }
-        // Move the furthest away coin
+        // Move the coins to the goal
         if (moves.size() < num_moves) {
-            for(Pair<Point, Integer> mapping: goalCoinMap) {
+            for (Pair<Point, Integer> mapping : goalCoinMap) {
                 Point goalPoint = mapping.getKey();
                 Integer coinIndex = mapping.getValue();
-                Pair<List<Pair<Integer, Point>>, Boolean> movesAndCheck = findMovesToPointWithChecks(
+                moves = findMovesToPoint(
                         moves,
                         coinIndex,
                         player_pieces.get(coinIndex),
@@ -292,12 +315,7 @@ public class Player implements flip.sim.Player {
                         player_pieces,
                         opponent_pieces
                 );
-                moves = movesAndCheck.getKey();
-                Boolean check = movesAndCheck.getValue();
-                if(check){
-                    trappingCoins.add(coinIndex);
-                }
-                if(moves.size() >= num_moves) {
+                if (moves.size() >= num_moves) {
                     break;
                 }
             }
@@ -305,20 +323,20 @@ public class Player implements flip.sim.Player {
         return moves;
     }
 
-    public boolean checkOurCoinInPlace(Point p, HashMap<Integer, Point> player_pieces) {
-        for(Point p2: player_pieces.values()) {
-            double dist = Board.getdist(p, p2);
+    public Integer checkOurCoinInPlace(Point p, HashMap<Integer, Point> player_pieces) {
+        for (int i = 0; i < player_pieces.size(); i++) {
+            double dist = Board.getdist(p, player_pieces.get(i));
             if (Board.almostEqual(dist, 0)) {
-                return true;
+                return i;
             }
         }
-        return false;
+        return null;
     }
 
     public List<Point> getGapStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
         //Add all the points at the valid range of formming wall
         List<Point> wallList = new ArrayList<>();
-        for (Point point : opponent_pieces.values()){
+        for (Point point : opponent_pieces.values()) {
             if ((!isplayer1 && point.x > wall_back && point.x < wall_front) || (isplayer1 && point.x < -wall_back && point.x > -wall_front))
                 wallList.add(point);
         }
@@ -366,7 +384,8 @@ public class Player implements flip.sim.Player {
         for (Map.Entry<Integer, Point> entry : player_pieces.entrySet()) {
             Point curr_position = entry.getValue();
             Pair<Integer, Point> move = new Pair<Integer, Point>(entry.getKey(), new Point(curr_position.x + sign * 2, curr_position.y));
-            if (shouldStop(player_pieces, opponent_pieces, entry.getKey()) || !check_validity(move, player_pieces, opponent_pieces)) continue;
+            if (shouldStop(player_pieces, opponent_pieces, entry.getKey()) || !check_validity(move, player_pieces, opponent_pieces))
+                continue;
             Point p = entry.getValue();
             double dist = getDistance(p, gapPoint);
             if (dist < minDis) {
@@ -374,7 +393,7 @@ public class Player implements flip.sim.Player {
                 minId = entry.getKey();
             }
         }
-        Log.log("Gap Point: " + gapPoint.x +","+gapPoint.y);
+        Log.log("Gap Point: " + gapPoint.x + "," + gapPoint.y);
         return findMovesToPoint(moves, minId, player_pieces.get(minId), gapPoint, num_moves, player_pieces, opponent_pieces);
     }
 
@@ -401,7 +420,7 @@ public class Player implements flip.sim.Player {
                 break;
             }
         }
-        if(moves.size() == 0) {
+        if (moves.size() == 0) {
             currentState = State.WALL_BUILT;
         }
         return moves;
@@ -415,8 +434,8 @@ public class Player implements flip.sim.Player {
         }
         for (int i = 0; i < 11; i++) {
             double wallY = wallPointCenters11[i];
-            for(Point oponentCoin: pieces.values()) {
-                if((oponentCoin.y > (wallY - densityDelta)) && (oponentCoin.y < (wallY + densityDelta))) {
+            for (Point oponentCoin : pieces.values()) {
+                if ((oponentCoin.y > (wallY - densityDelta)) && (oponentCoin.y < (wallY + densityDelta))) {
                     laneCounts[i]++;
                 }
             }
@@ -424,7 +443,7 @@ public class Player implements flip.sim.Player {
         ArrayIndexComparator comparator = new ArrayIndexComparator(laneCounts);
         Integer[] indices = comparator.createIndexArray();
         Arrays.sort(indices, comparator);
-        for(int i = 0; i < indices.length / 2; i++) {
+        for (int i = 0; i < indices.length / 2; i++) {
             int temp = indices[i];
             indices[i] = indices[indices.length - i - 1];
             indices[indices.length - i - 1] = temp;
@@ -440,9 +459,9 @@ public class Player implements flip.sim.Player {
         }
         for (int i = 0; i < 11; i++) {
             double wallY = wallPointCenters11[i];
-            for(Point oponentCoin: pieces.values()) {
+            for (Point oponentCoin : pieces.values()) {
                 double distance = getDistance(oponentCoin, new Point(wallX, wallY));
-                if(distance < laneCounts[i]) {
+                if (distance < laneCounts[i]) {
                     laneCounts[i] = distance;
                 }
             }
@@ -458,7 +477,7 @@ public class Player implements flip.sim.Player {
         return indices;
     }
 
-    public List<Pair<Integer, Point>>  getBFSMoves(
+    public List<Pair<Integer, Point>> getBFSMoves(
             List<Pair<Integer, Point>> moves,
             Integer num_moves,
             HashMap<Integer, Point> player_pieces,
@@ -466,11 +485,12 @@ public class Player implements flip.sim.Player {
     ) {
         //Find the opponent that cross the their boundary most far, move our opposite coin first.
         double low1 = Integer.MAX_VALUE, low2 = Integer.MAX_VALUE;
-        int low1Id = -1, low2Id= -1;
+        int low1Id = -1, low2Id = -1;
         for (int i = 0; i < n; i++) {
             Point curr_position = player_pieces.get(i);
             Pair<Integer, Point> move1 = new Pair<Integer, Point>(i, new Point(curr_position.x + sign * 2, curr_position.y));
-            if (shouldStop(player_pieces, opponent_pieces, i) || !check_validity(move1, player_pieces, opponent_pieces)) continue;
+            if (shouldStop(player_pieces, opponent_pieces, i) || !check_validity(move1, player_pieces, opponent_pieces))
+                continue;
             // Measure the danger of distance to attach our boundary
             double danger = Integer.MAX_VALUE;
             for (Point point : opponent_pieces.values()) {
@@ -499,7 +519,7 @@ public class Player implements flip.sim.Player {
             player_pieces.put(low1Id, move1);
             Pair<Integer, Point> nextMove = new Pair<Integer, Point>(low1Id, new Point(move1.x + sign * 2, move1.y));
             if (check_validity(nextMove, player_pieces, opponent_pieces) && (low2Id == -1 || low1 + 2 < low2)
-                && !shouldStop(player_pieces, opponent_pieces, low1Id))
+                    && !shouldStop(player_pieces, opponent_pieces, low1Id))
                 moves.add(nextMove);
             else if (low2Id != -1)
                 moves.add(new Pair<Integer, Point>(low2Id, new Point(player_pieces.get(low2Id).x + sign * 2, player_pieces.get(low2Id).y)));
@@ -507,7 +527,7 @@ public class Player implements flip.sim.Player {
         if (moves.size() == num_moves) return moves;
         //Find the coin with more distance to cross the other one, put it as higher priority to cross.
         double high1 = -1, high2 = -1;
-        int high1Id = -1, high2Id= -1;
+        int high1Id = -1, high2Id = -1;
         for (int i = 0; i < n; i++) {
             Point curr_position = player_pieces.get(i);
             if (shouldStop(player_pieces, opponent_pieces, i)) continue;
@@ -527,11 +547,11 @@ public class Player implements flip.sim.Player {
             }
         }
         if (high1Id != -1) {
-            Pair<Integer, Point> optimalMove = findNextPathToGetOverBlock(high1Id, opponent_pieces, player_pieces, new Point(sign*60, player_pieces.get(high1Id).y));
+            Pair<Integer, Point> optimalMove = findNextPathToGetOverBlock(high1Id, opponent_pieces, player_pieces, new Point(sign * 60, player_pieces.get(high1Id).y));
             if (optimalMove != null)
                 moves.add(optimalMove);
             if (moves.size() == num_moves && high2Id != -1) {
-                Pair<Integer, Point> optimalMove2 = findNextPathToGetOverBlock(high2Id, opponent_pieces, player_pieces, new Point(sign*60, player_pieces.get(high2Id).y));
+                Pair<Integer, Point> optimalMove2 = findNextPathToGetOverBlock(high2Id, opponent_pieces, player_pieces, new Point(sign * 60, player_pieces.get(high2Id).y));
                 if (optimalMove2 != null)
                     moves.add(optimalMove2);
             }
@@ -557,19 +577,17 @@ public class Player implements flip.sim.Player {
                     Point opponent = getBlockingOpponent(move2.getValue(), opponent_pieces);
                     Log.log("After one move, Dist c = " + (Math.abs(opponent.x - curr_position.x - sign * 2) - 2) + " I am player" +
                             (isplayer1 ? "1" : "2"));
-                    Pair<Integer, Point> move3 = findPointTangentToTwoCoins(i, move1.getValue(), opponent, player_pieces, opponent_pieces, new Point(sign*60, move1.getValue().y));
+                    Pair<Integer, Point> move3 = findPointTangentToTwoCoins(i, move1.getValue(), opponent, player_pieces, opponent_pieces, new Point(sign * 60, move1.getValue().y));
                     if (move3 != null)
                         moves.add(move3);
-                }
-                else
+                } else
                     moves.add(move2);
-            }
-            else {
+            } else {
                 Point opponent = getBlockingOpponent(move1.getValue(), opponent_pieces);
-                Log.log("First move to dodge, Dist c = " + (Math.abs(opponent.x - curr_position.x) - 2)+
+                Log.log("First move to dodge, Dist c = " + (Math.abs(opponent.x - curr_position.x) - 2) +
                         " I am player" +
                         (isplayer1 ? "1" : "2"));
-                Pair<Integer, Point> move2 = findPointTangentToTwoCoins(i, curr_position, opponent, player_pieces, opponent_pieces, new Point(sign*60, curr_position.y));
+                Pair<Integer, Point> move2 = findPointTangentToTwoCoins(i, curr_position, opponent, player_pieces, opponent_pieces, new Point(sign * 60, curr_position.y));
                 if (move2 != null) {
                     moves.add(move2);
                     Point point2 = move2.getValue();
@@ -577,7 +595,7 @@ public class Player implements flip.sim.Player {
                     Pair<Integer, Point> move3 = new Pair<Integer, Point>(i, new Point(point2.x + sign * 2, point2.y));
                     if (!check_validity(move3, player_pieces, opponent_pieces)) {
                         Pair<Integer, Point> move4 = findPointTangentToTwoCoins(i, point2, getBlockingOpponent(move3.getValue(), opponent_pieces),
-                                player_pieces, opponent_pieces, new Point(sign*60, point2.y));
+                                player_pieces, opponent_pieces, new Point(sign * 60, point2.y));
                         if (move4 != null)
                             moves.add(move4);
                         else
@@ -616,98 +634,6 @@ public class Player implements flip.sim.Player {
         );
     }
 
-    public Pair<List<Pair<Integer, Point>>,Boolean>  findMovesToPointWithChecks(
-            List<Pair<Integer, Point>> moves,
-            Integer coin,
-            Point start,
-            Point goal,
-            Integer numMoves,
-            HashMap<Integer, Point> playerPieces,
-            HashMap<Integer, Point> opponentPieces
-    ) {
-        double distance = getDistance(start, goal);
-        if (Board.almostEqual(distance, 0)) {
-            return new Pair(moves, true);
-        } else if (Board.almostEqual(distance, 2)) {
-            moves.add(new Pair<Integer, Point>(coin, goal));
-            return new Pair(moves, true);
-        } else if (distance < diameter_piece * 2) {
-            double x1 = 0.5 * (goal.x + start.x);
-            double y1 = 0.5 * (goal.y + start.y);
-            Boolean check = false;
-
-            double sqrt_const = Math.sqrt(16 / (distance * distance) - 1) / 2;
-            double x2 = sqrt_const * (goal.y - start.y);
-            double y2 = sqrt_const * (start.x - goal.x);
-
-            Pair<Integer, Point> move = new Pair<Integer, Point>(coin, new Point(x1 + x2, y1 + y2));
-
-            if (check_validity(move, playerPieces, opponentPieces)) {
-                moves.add(move);
-                playerPieces.put(coin, move.getValue());
-                Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, new Point(goal.x, goal.y));
-                if (moves.size() < numMoves && check_validity(move2, playerPieces, opponentPieces)) {
-                    check = true;
-                    moves.add(move2);
-                }
-
-            } else {
-                move = new Pair<Integer, Point>(coin, new Point(x1 - x2, y1 - y2));
-                if (moves.size() < numMoves && check_validity(move, playerPieces, opponentPieces)) {
-                    moves.add(move);
-                    playerPieces.put(coin, move.getValue());
-                    Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, new Point(goal.x, goal.y));
-                    if (moves.size() < numMoves && check_validity(move2, playerPieces, opponentPieces)) {
-                        moves.add(move2);
-                        check = true;
-                    }
-                } else {
-                    move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                    Log.log("Moves " + start + " / " + move.getValue());
-                    if (moves.size() < numMoves && check_validity(move, playerPieces, opponentPieces)) {
-                        moves.add(move);
-                    }
-                }
-            }
-            return new Pair(moves, check);
-        } else {
-            Point start2 = getPointInDirection(start, goal);
-            Pair<Integer, Point> move = new Pair<Integer, Point>(coin, start2);
-
-            if (check_validity(move, playerPieces, opponentPieces)) {
-                moves.add(move);
-                playerPieces.put(coin, move.getValue());
-                if (distance > diameter_piece * 3 && moves.size() == 1) {
-                    Point start3 = getPointInDirection(start2, goal);
-                    Pair<Integer, Point> move4 = new Pair<Integer, Point>(coin, start3);
-
-                    if (check_validity(move4, playerPieces, opponentPieces)) {
-                        moves.add(move4);
-                    }
-                }
-            }
-            else {
-                move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                moves.add(move);
-                playerPieces.put(coin, move.getValue());
-                if (distance > diameter_piece * 3 && moves.size() == 1) {
-                    Point start3 = getPointInDirection(start2, goal);
-                    Pair<Integer, Point> move4 = new Pair<Integer, Point>(coin, start3);
-
-                    if (check_validity(move4, playerPieces, opponentPieces)) {
-                        moves.add(move4);
-                    }
-                    else {
-                        move4 = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                        moves.add(move4);
-                    }
-                }
-            }
-        }
-        return new Pair(moves, false);
-    }
-
-
     // Inspired by group 4
     public List<Pair<Integer, Point>> findMovesToPoint(
             List<Pair<Integer, Point>> moves,
@@ -740,13 +666,20 @@ public class Player implements flip.sim.Player {
                 if (check_validity(move2, playerPieces, opponentPieces))
                     moves.add(move2);
             } else {
-                move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                if (check_validity(move, playerPieces, opponentPieces)) {
+                move = new Pair<Integer, Point>(coin, new Point(x1 - x2, y1 - y2));
+                if (moves.size() < numMoves && check_validity(move, playerPieces, opponentPieces)) {
                     moves.add(move);
                     playerPieces.put(coin, move.getValue());
                     Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, new Point(goal.x, goal.y));
-                    if (check_validity(move2, playerPieces, opponentPieces))
+                    if (moves.size() < numMoves && check_validity(move2, playerPieces, opponentPieces)) {
                         moves.add(move2);
+                    }
+                } else {
+                    move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
+                    Log.log("Moves " + start + " / " + move.getValue());
+                    if (moves.size() < numMoves && check_validity(move, playerPieces, opponentPieces)) {
+                        moves.add(move);
+                    }
                 }
             }
         } else {
@@ -764,8 +697,7 @@ public class Player implements flip.sim.Player {
                         moves.add(move4);
                     }
                 }
-            }
-            else {
+            } else {
                 move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
                 moves.add(move);
                 playerPieces.put(coin, move.getValue());
@@ -775,8 +707,7 @@ public class Player implements flip.sim.Player {
 
                     if (check_validity(move4, playerPieces, opponentPieces)) {
                         moves.add(move4);
-                    }
-                    else {
+                    } else {
                         move4 = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
                         moves.add(move4);
                     }
@@ -810,7 +741,8 @@ public class Player implements flip.sim.Player {
         for (int i = 0; i < n; i++) {
             Point curr_position = player_pieces.get(i);
             Pair<Integer, Point> move = new Pair<Integer, Point>(i, new Point(curr_position.x + sign * 2, curr_position.y));
-            if (shouldStop(player_pieces, opponent_pieces, i) || !check_validity(move, player_pieces, opponent_pieces)) continue;
+            if (shouldStop(player_pieces, opponent_pieces, i) || !check_validity(move, player_pieces, opponent_pieces))
+                continue;
             int count = 0;
             for (Point point : opponent_pieces.values()) {
                 // Two lines parameters
@@ -877,7 +809,7 @@ public class Player implements flip.sim.Player {
 
             Integer piece_id = random.nextInt(n);
 
-            if(Arrays.stream(wallMatching).anyMatch(x -> x == piece_id))
+            if (Arrays.stream(wallMatching).anyMatch(x -> x == piece_id))
                 continue;
 
             Point curr_position = player_pieces.get(piece_id);
@@ -1016,27 +948,26 @@ public class Player implements flip.sim.Player {
         double x = 0, y = 0;
         if (y1 == y2) {
             x = (x1 + x2) / 2;
-            y = y1 + Math.sqrt(4 - (x - x1)*(x - x1));
+            y = y1 + Math.sqrt(4 - (x - x1) * (x - x1));
             Pair<Integer, Point> move = new Pair<Integer, Point>(coinId, new Point(x, y));
             if (check_validity(move, player_pieces, opponent_pieces))
                 return move;
-            y = y1 - Math.sqrt(4 - (x - x1)*(x - x1));
+            y = y1 - Math.sqrt(4 - (x - x1) * (x - x1));
             move = new Pair<Integer, Point>(coinId, new Point(x, y));
             if (check_validity(move, player_pieces, opponent_pieces))
                 return move;
-        }
-        else {
+        } else {
             double x_mid = (x1 + x2) / 2;
             double y_mid = (y1 + y2) / 2;
             double k = -(x1 - x2) / (y1 - y2);
-            double b = y_mid - k*x_mid;
-            double a1 = k*k + 1;
-            double b1 = 2*(k*(b - y1) - x1);
-            double c1 = (b - y1)*(b - y1) + x1*x1 - 4;
-            double root1 = (-b1 + Math.sqrt(Math.pow(b1, 2) - 4*a1*c1)) / (2*a1);
-            double root2 = (-b1 - Math.sqrt(Math.pow(b1, 2) - 4*a1*c1)) / (2*a1);
-            double root1_y = root1*k + b;
-            double root2_y = root2*k + b;
+            double b = y_mid - k * x_mid;
+            double a1 = k * k + 1;
+            double b1 = 2 * (k * (b - y1) - x1);
+            double c1 = (b - y1) * (b - y1) + x1 * x1 - 4;
+            double root1 = (-b1 + Math.sqrt(Math.pow(b1, 2) - 4 * a1 * c1)) / (2 * a1);
+            double root2 = (-b1 - Math.sqrt(Math.pow(b1, 2) - 4 * a1 * c1)) / (2 * a1);
+            double root1_y = root1 * k + b;
+            double root2_y = root2 * k + b;
             Point point1 = new Point(root1, root1_y);
             Point point2 = new Point(root2, root2_y);
             Pair<Integer, Point> move1 = new Pair<Integer, Point>(coinId, point1);
@@ -1051,8 +982,7 @@ public class Player implements flip.sim.Player {
     }
 
     /**
-     *
-     * @param cur is the invalid move
+     * @param cur             is the invalid move
      * @param opponent_pieces
      * @return opponent pieces that blocks your move
      */
@@ -1065,8 +995,7 @@ public class Player implements flip.sim.Player {
     }
 
     /**
-     *
-     * @param cur is the current position
+     * @param cur             is the current position
      * @param opponent_pieces
      * @return all the possible coins that blocks your next move
      */
@@ -1077,7 +1006,7 @@ public class Player implements flip.sim.Player {
                 blockingList.add(entry.getValue());
         }
         for (HashMap.Entry<Integer, Point> entry : player_pieces.entrySet()) {
-            if (Board.getdist(cur, entry.getValue()) + eps < 4 && Board.getdist(cur, entry.getValue()) != 0 )
+            if (Board.getdist(cur, entry.getValue()) + eps < 4 && Board.getdist(cur, entry.getValue()) != 0)
                 blockingList.add(entry.getValue());
         }
         return blockingList;
@@ -1096,60 +1025,47 @@ public class Player implements flip.sim.Player {
     }
 
 
-
-
-
 }
 
-class ArrayIndexComparator implements Comparator<Integer>
-{
+class ArrayIndexComparator implements Comparator<Integer> {
     private final Integer[] array;
 
-    public ArrayIndexComparator(Integer[] array)
-    {
+    public ArrayIndexComparator(Integer[] array) {
         this.array = array;
     }
 
-    public Integer[] createIndexArray()
-    {
+    public Integer[] createIndexArray() {
         Integer[] indexes = new Integer[array.length];
-        for (int i = 0; i < array.length; i++)
-        {
+        for (int i = 0; i < array.length; i++) {
             indexes[i] = i; // Autoboxing
         }
         return indexes;
     }
 
     @Override
-    public int compare(Integer index1, Integer index2)
-    {
+    public int compare(Integer index1, Integer index2) {
         // Autounbox from Integer to int to use as array indexes
         return array[index1].compareTo(array[index2]);
     }
 }
 
-class ArrayIndexDoubleComparator implements Comparator<Integer>
-{
+class ArrayIndexDoubleComparator implements Comparator<Integer> {
     private final Double[] array;
 
-    public ArrayIndexDoubleComparator(Double[] array)
-    {
+    public ArrayIndexDoubleComparator(Double[] array) {
         this.array = array;
     }
 
-    public Integer[] createIndexArray()
-    {
+    public Integer[] createIndexArray() {
         Integer[] indexes = new Integer[array.length];
-        for (int i = 0; i < array.length; i++)
-        {
+        for (int i = 0; i < array.length; i++) {
             indexes[i] = i; // Autoboxing
         }
         return indexes;
     }
 
     @Override
-    public int compare(Integer index1, Integer index2)
-    {
+    public int compare(Integer index1, Integer index2) {
         // Autounbox from Integer to int to use as array indexes
         return array[index1].compareTo(array[index2]);
     }
