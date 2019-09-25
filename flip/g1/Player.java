@@ -732,24 +732,24 @@ public class Player implements flip.sim.Player {
             return moves;
         }
 
-        private Pair<Integer, Double> findClosesPoint(
-                HashMap<Integer, Point> player_pieces, double x, double y, List<Integer> usedCoins
-        ) {
-            double minDistance = 200;
-            Integer minCoinIndex = -1;
-            for (int i = 0; i < n; i++) {
-                Point point = player_pieces.get(i);
-                if (usedCoins.contains(i)) {
-                    continue;
-                }
-                distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2));
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    minCoinIndex = i;
-                }
+    private Pair<Integer, Double> findClosesPoint(
+            HashMap<Integer, Point> player_pieces, double x, double y, List<Integer> usedCoins
+    ) {
+        double minDistance = 200;
+        Integer minCoinIndex = -1;
+        for (int i = 0; i < n; i++) {
+            Point point = player_pieces.get(i);
+            if (usedCoins.contains(i)) {
+                continue;
             }
-            return new Pair(minCoinIndex, minDistance);
+            distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2));
+            if (distance < minDistance) {
+                minDistance = distance;
+                minCoinIndex = i;
+            }
         }
+        return new Pair(minCoinIndex, minDistance);
+    }
 
         public Point getPointInDirection(Point start, Point goal) {
             double distance = getDistance(start, goal);
@@ -759,88 +759,120 @@ public class Player implements flip.sim.Player {
             );
         }
 
-        // Inspired by group 4
-        public List<Pair<Integer, Point>> findMovesToPoint(
-                List<Pair<Integer, Point>> moves,
-                Integer coin,
-                Point start,
-                Point goal,
-                Integer numMoves,
-                HashMap<Integer, Point> playerPieces,
-                HashMap<Integer, Point> opponentPieces
-        ) {
-            double distance = getDistance(start, goal);
-            if (Board.almostEqual(distance, 0)) {
-                return moves;
-            } else if (Board.almostEqual(distance, 2)) {
-                moves.add(new Pair<Integer, Point>(coin, goal));
-            } else if (distance < diameter_piece * 2) {
-                double x1 = 0.5 * (goal.x + start.x);
-                double y1 = 0.5 * (goal.y + start.y);
+    // Inspired by group 4
+    public List<Pair<Integer, Point>> findMovesToPoint(
+            List<Pair<Integer, Point>> moves,
+            Integer coin,
+            Point start,
+            Point goal,
+            Integer numMoves,
+            HashMap<Integer, Point> playerPieces,
+            HashMap<Integer, Point> opponentPieces
+    ) {
+        Log.log("Current pos: " + start);
+        Log.log("Goal pos: " + goal);
+        double distance = getDistance(start, goal);
+        if (Board.almostEqual(distance, 0)) {
+            return moves;
+        } else if (Board.almostEqual(distance, 2)) {
+            moves.add(new Pair<Integer, Point>(coin, goal));
+        } else if (distance < diameter_piece * 2) {
+            double x1 = 0.5 * (goal.x + start.x);
+            double y1 = 0.5 * (goal.y + start.y);
 
-                double sqrt_const = Math.sqrt(16 / (distance * distance) - 1) / 2;
-                double x2 = sqrt_const * (goal.y - start.y);
-                double y2 = sqrt_const * (start.x - goal.x);
-
-                Pair<Integer, Point> move = new Pair<Integer, Point>(coin, new Point(x1 + x2, y1 + y2));
-
-                if (check_validity(move, playerPieces, opponentPieces)) {
+            double sqrt_const = Math.sqrt(16 / (distance * distance) - 1) / 2;
+            double x2 = sqrt_const * (goal.y - start.y);
+            double y2 = sqrt_const * (start.x - goal.x);
+            Pair<Integer, Point> move = new Pair<Integer, Point>(coin, new Point(x1 + x2, y1 + y2));
+            if (check_validity(move, playerPieces, opponentPieces)) {
+                Log.log("First move: " + move.getValue());
+                moves.add(move);
+                playerPieces.put(coin, move.getValue());
+                Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, new Point(goal.x, goal.y));
+                if (check_validity(move2, playerPieces, opponentPieces)) {
+                    Log.log("Second move: " + move2.getValue());
+                    moves.add(move2);
+                }
+            } else {
+                move = new Pair<Integer, Point>(coin, new Point(x1 - x2, y1 - y2));
+                if (moves.size() < numMoves && check_validity(move, playerPieces, opponentPieces)) {
                     moves.add(move);
                     playerPieces.put(coin, move.getValue());
                     Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, new Point(goal.x, goal.y));
-                    if (check_validity(move2, playerPieces, opponentPieces))
+                    if (moves.size() < numMoves && check_validity(move2, playerPieces, opponentPieces)) {
                         moves.add(move2);
-                } else {
-                    move = new Pair<Integer, Point>(coin, new Point(x1 - x2, y1 - y2));
-                    if (moves.size() < numMoves && check_validity(move, playerPieces, opponentPieces)) {
+                    }
+                }
+                else {
+                    move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
+                    if (check_validity(move, playerPieces, opponentPieces)) {
+                        Log.log("First move!: " + move.getValue());
                         moves.add(move);
                         playerPieces.put(coin, move.getValue());
                         Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, new Point(goal.x, goal.y));
-                        if (moves.size() < numMoves && check_validity(move2, playerPieces, opponentPieces)) {
+                        if (check_validity(move2, playerPieces, opponentPieces)) {
+                            Log.log("Second move!: " + move2.getValue());
                             moves.add(move2);
-                        }
-                    } else {
-                        move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                        Log.log("Moves " + start + " / " + move.getValue());
-                        if (moves.size() < numMoves && check_validity(move, playerPieces, opponentPieces)) {
-                            moves.add(move);
-                        }
-                    }
-                }
-            } else {
-                Point start2 = getPointInDirection(start, goal);
-                Pair<Integer, Point> move = new Pair<Integer, Point>(coin, start2);
-
-                if (check_validity(move, playerPieces, opponentPieces)) {
-                    moves.add(move);
-                    playerPieces.put(coin, move.getValue());
-                    if (distance > diameter_piece * 3 && moves.size() == 1) {
-                        Point start3 = getPointInDirection(start2, goal);
-                        Pair<Integer, Point> move4 = new Pair<Integer, Point>(coin, start3);
-
-                        if (check_validity(move4, playerPieces, opponentPieces)) {
-                            moves.add(move4);
-                        }
-                    }
-                } else {
-                    move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                    moves.add(move);
-                    playerPieces.put(coin, move.getValue());
-                    if (distance > diameter_piece * 3 && moves.size() == 1) {
-                        Point start3 = getPointInDirection(start2, goal);
-                        Pair<Integer, Point> move4 = new Pair<Integer, Point>(coin, start3);
-
-                        if (check_validity(move4, playerPieces, opponentPieces)) {
-                            moves.add(move4);
                         } else {
-                            move4 = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                            moves.add(move4);
+                            move2 = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
+                            if (move2 != null) {
+                                Log.log("Second move!: " + move2.getValue());
+                                moves.add(move2);
+                            }
                         }
                     }
                 }
             }
-            return moves;
+        } else {
+            Point start2 = getPointInDirection(start, goal);
+            Pair<Integer, Point> move = new Pair<Integer, Point>(coin, start2);
+
+            if (check_validity(move, playerPieces, opponentPieces)) {
+                Log.log("First move!!: " + move.getValue());
+                moves.add(move);
+                playerPieces.put(coin, move.getValue());
+                Log.log("second move ready!!");
+                Point start3 = getPointInDirection(start2, goal);
+                Pair<Integer, Point> move4 = new Pair<Integer, Point>(coin, start3);
+                if (check_validity(move4, playerPieces, opponentPieces)) {
+                    Log.log("Second move!!: " + move4.getValue());
+                    moves.add(move4);
+                }
+                else {
+                    move4 = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
+                    if (move4 != null) {
+                        Log.log("Second move!!: " + move4.getValue());
+                        moves.add(move4);
+                    }
+                }
+
+            }
+            else {
+                move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
+                if (move != null) {
+                    moves.add(move);
+                    Log.log("First move!!!: " + move.getValue());
+                    playerPieces.put(coin, move.getValue());
+                }
+                Point start3 = getPointInDirection(start2, goal);
+                Pair<Integer, Point> move4 = new Pair<Integer, Point>(coin, start3);
+
+                if (check_validity(move4, playerPieces, opponentPieces)) {
+                    Log.log("Second move!!!: " + move4.getValue());
+                    moves.add(move4);
+                }
+                else {
+                    move4 = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
+                    if (move4 != null) {
+                        moves.add(move4);
+                        Log.log("Second move!!!: " + move4.getValue());
+                    }
+                }
+
+            }
         }
+        return moves;
+    }
 
         public double getDistance(Point p1, Point p2) {
             return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
@@ -1067,44 +1099,50 @@ public class Player implements flip.sim.Player {
                     || (!isplayer1 && curr_position.x > threshold + count_behind_players * 2.5);
         }
 
-        Pair<Integer, Point> findPointTangentToTwoCoins(int coinId, Point cur, Point opponent, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces,
-                                                        Point goal) {
-            double x1 = cur.x, y1 = cur.y, x2 = opponent.x, y2 = opponent.y;
-            double x = 0, y = 0;
-            if (y1 == y2) {
-                x = (x1 + x2) / 2;
-                y = y1 + Math.sqrt(4 - (x - x1) * (x - x1));
-                Pair<Integer, Point> move = new Pair<Integer, Point>(coinId, new Point(x, y));
-                if (check_validity(move, player_pieces, opponent_pieces))
-                    return move;
-                y = y1 - Math.sqrt(4 - (x - x1) * (x - x1));
-                move = new Pair<Integer, Point>(coinId, new Point(x, y));
-                if (check_validity(move, player_pieces, opponent_pieces))
-                    return move;
-            } else {
-                double x_mid = (x1 + x2) / 2;
-                double y_mid = (y1 + y2) / 2;
-                double k = -(x1 - x2) / (y1 - y2);
-                double b = y_mid - k * x_mid;
-                double a1 = k * k + 1;
-                double b1 = 2 * (k * (b - y1) - x1);
-                double c1 = (b - y1) * (b - y1) + x1 * x1 - 4;
-                double root1 = (-b1 + Math.sqrt(Math.pow(b1, 2) - 4 * a1 * c1)) / (2 * a1);
-                double root2 = (-b1 - Math.sqrt(Math.pow(b1, 2) - 4 * a1 * c1)) / (2 * a1);
-                double root1_y = root1 * k + b;
-                double root2_y = root2 * k + b;
-                Point point1 = new Point(root1, root1_y);
-                Point point2 = new Point(root2, root2_y);
-                Pair<Integer, Point> move1 = new Pair<Integer, Point>(coinId, point1);
-                Pair<Integer, Point> move2 = new Pair<Integer, Point>(coinId, point2);
-                if (getDistance(point1, goal) < getDistance(point2, goal) && check_validity(move1, player_pieces, opponent_pieces))
-                    return move1;
-                else if (check_validity(move2, player_pieces, opponent_pieces))
-                    return move2;
+    Pair<Integer, Point> findPointTangentToTwoCoins(int coinId, Point cur, Point opponent, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces,
+                                                    Point goal) {
+        double x1 = cur.x, y1 = cur.y, x2 = opponent.x, y2 = opponent.y;
+        double x = 0, y = 0;
+        if (y1 == y2) {
+            x = (x1 + x2) / 2;
+            y = y1 + Math.sqrt(4 - (x - x1) * (x - x1));
+            Pair<Integer, Point> move = new Pair<Integer, Point>(coinId, new Point(x, y));
+            if (check_validity(move, player_pieces, opponent_pieces))
+                return move;
+            y = y1 - Math.sqrt(4 - (x - x1) * (x - x1));
+            move = new Pair<Integer, Point>(coinId, new Point(x, y));
+            if (check_validity(move, player_pieces, opponent_pieces))
+                return move;
+        } else {
+            double x_mid = (x1 + x2) / 2;
+            double y_mid = (y1 + y2) / 2;
+            double k = -(x1 - x2) / (y1 - y2);
+            double b = y_mid - k * x_mid;
+            double a1 = k * k + 1;
+            double b1 = 2 * (k * (b - y1) - x1);
+            double c1 = (b - y1) * (b - y1) + x1 * x1 - 4;
+            double root1 = (-b1 + Math.sqrt(b1*b1 - 4 * a1 * c1)) / (2 * a1);
+            double root2 = (-b1 - Math.sqrt(b1*b1 - 4 * a1 * c1)) / (2 * a1);
+            double root1_y = root1 * k + b;
+            double root2_y = root2 * k + b;
+            Point point1 = new Point(root1, root1_y);
+            Point point2 = new Point(root2, root2_y);
+            Pair<Integer, Point> move1 = new Pair<Integer, Point>(coinId, point1);
+            Pair<Integer, Point> move2 = new Pair<Integer, Point>(coinId, point2);
+            Log.log("Complete!");
+            if (getDistance(point1, goal) < getDistance(point2, goal) && check_validity(move1, player_pieces, opponent_pieces)) {
+                Log.log("move1: " + move1.getValue());
+                return move1;
             }
-            // Any moves are blocked by some other coins.
-            return null;
+            else if (check_validity(move2, player_pieces, opponent_pieces)) {
+                return move2;
+            }
+            else if (check_validity(move1, player_pieces, opponent_pieces))
+                return move1;
         }
+        // Any moves are blocked by some other coins.
+        return null;
+    }
 
         /**
          * @param cur             is the invalid move
@@ -1137,17 +1175,20 @@ public class Player implements flip.sim.Player {
             return blockingList;
         }
 
-        Pair<Integer, Point> findNextPathToGetOverBlock(int coinId, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces,
-                                                        Point goal) {
-            List<Point> blockingList = getBlockingOpponents(player_pieces.get(coinId), opponent_pieces, player_pieces);
-            Pair<Integer, Point> optimalMove = null;
-            for (Point opponent : blockingList) {
-                Pair<Integer, Point> move = findPointTangentToTwoCoins(coinId, player_pieces.get(coinId), opponent, player_pieces, opponent_pieces, goal);
-                if (move != null)
-                    optimalMove = (optimalMove == null || Board.getdist(goal, move.getValue()) < Board.getdist(goal, optimalMove.getValue())) ? move : optimalMove;
-            }
-            return optimalMove;
+    Pair<Integer, Point> findNextPathToGetOverBlock(int coinId, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces,
+                                                    Point goal) {
+        Log.log("check!");
+        List<Point> blockingList = getBlockingOpponents(player_pieces.get(coinId), opponent_pieces, player_pieces);
+        Log.log("blocking: " + blockingList.size());
+        Pair<Integer, Point> optimalMove = null;
+        for (Point opponent : blockingList) {
+            Log.log("Blocking Points: " + opponent);
+            Pair<Integer, Point> move = findPointTangentToTwoCoins(coinId, player_pieces.get(coinId), opponent, player_pieces, opponent_pieces, goal);
+            if (move != null)
+                optimalMove = (optimalMove == null || Board.getdist(goal, move.getValue()) < Board.getdist(goal, optimalMove.getValue())) ? move : optimalMove;
         }
+        return optimalMove;
+    }
 
 
 }
