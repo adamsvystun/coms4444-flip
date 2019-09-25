@@ -184,6 +184,9 @@ public class Player implements flip.sim.Player {
             }
             case FINDING_GAP: {
                 moves = getGapFindMoves(moves, num_moves, player_pieces, opponent_pieces);
+                if (moves.size() < num_moves) {
+                    moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
+                }
                 break;
             }
             case FORWARD: {
@@ -207,102 +210,11 @@ public class Player implements flip.sim.Player {
                 moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
                 break;
             }
-
         }
-        if (moves.size() < num_moves) {
-            moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
-        }
-        if (moves.size() < num_moves) {
-            moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
-        }
+        Log.log("moves: " + moves);
         return moves;
     }
 
-        /*
-        public List<Pair<Integer, Point>> getPostBlitzMoves_bad(
-            List<Pair<Integer, Point>> moves,
-            Integer num_moves,
-            HashMap<Integer, Point> player_pieces,
-            HashMap<Integer, Point> opponent_pieces
-        ) {
-            // Move our fixed "trapper coins"
-            for (int id_index = Trapper_IDs.size()-1; id_index < 0; id_index -= 1) {
-                if (moves.size() == 2) {
-                    return moves;
-                }
-                int id = Trapper_IDs.get(id_index);
-                Point curr_position = player_pieces.get(id);
-                if ((isplayer1 && curr_position.x < -threshold) || (!isplayer1 && curr_position.x > threshold)) {
-                    continue;
-                }
-                // Focus on moving them to the goal.
-                for (int offset = 0; offset < 8 ; offset +=1) {
-                    if (moves.size() == 2) {
-                        return moves;
-                    }
-                    if ((isplayer1 && curr_position.x < -threshold) || (!isplayer1 && curr_position.x > threshold)) {
-                        break;
-                    }
-                    double theta_up = 0;
-                    double theta_down = 0;
-                    double delta_x = 0;
-                    double delta_y_up = 0;
-                    double delta_y_down = 0;
-                    Point new_position_up = new Point(curr_position);
-                    Point new_position_down = new Point(curr_position);
-                    if (isplayer1) {
-                        // going left...
-                        theta_up = (1 - offset * .1) * Math.PI;
-                        // Try down 225 degrees
-                        theta_down = (1 + offset * .1) * Math.PI;
-
-                        delta_x = diameter_piece * Math.cos(theta_up);
-                        delta_y_up = diameter_piece * Math.sin(theta_up);
-                        delta_y_down = diameter_piece * Math.sin(theta_down);
-
-                        new_position_up.x -= delta_x;
-                        new_position_down.x -= delta_x;
-
-                        new_position_up.y += delta_y_up;
-                        new_position_down.y += delta_y_down;
-
-                    } else {
-                        // going right.
-                        // Try up 45 degrees
-                        theta_up = (0 + offset * .1) * Math.PI;
-                        // Try down 315 degrees
-                        theta_down = (0 - offset * .1) * Math.PI;
-
-                        delta_x = diameter_piece * Math.cos(theta_up);
-                        delta_y_up = diameter_piece * Math.sin(theta_up);
-                        delta_y_down = diameter_piece * Math.sin(theta_down);
-
-                        new_position_up.x += delta_x;
-                        new_position_down.x += delta_x;
-
-                        new_position_up.y += delta_y_up;
-                        new_position_down.y += delta_y_down;
-
-
-                    }
-                    Pair<Integer, Point> move_up = new Pair<Integer, Point>(id, new_position_up);
-                    Pair<Integer, Point> move_down = new Pair<Integer, Point>(id, new_position_down);
-
-
-                    if (check_validity(move_up, player_pieces, opponent_pieces)) {
-                        moves.add(move_up);
-                        player_pieces.put(id, move_up.getValue());
-                        offset = 0;
-                    } else if (check_validity(move_down, player_pieces, opponent_pieces)) {
-                        moves.add(move_down);
-                        player_pieces.put(id, move_down.getValue());
-                        offset = 0;
-                    }
-                }
-            }
-            return moves;
-        }
-        */
 
     public List<Pair<Integer, Point>> getPostBlitzMoves(
             List<Pair<Integer, Point>> moves,
@@ -419,94 +331,6 @@ public class Player implements flip.sim.Player {
     }
 
 
-//    public List<Pair<Integer, Point>> getBlitzMoves_bad(
-//            List<Pair<Integer, Point>> moves,
-//            Integer num_moves,
-//            HashMap<Integer, Point> player_pieces,
-//            HashMap<Integer, Point> opponent_pieces
-//    ) {
-//        boolean blitz_done = false;
-//        double degree_increase = 0;
-//        while (!blitz_done) {
-//            if (moves.size() == num_moves) {
-//                return moves;
-//            }
-//            //Strategy: greedily move
-//            // Future optimization: Make it move the last ones first
-//            blitz_done = true;
-//            for (int id = 0; id < n; id++) {
-//                if (Trapper_IDs.contains(id)) {
-//                    continue;
-//                }
-//                Point curr_position = player_pieces.get(id);
-//                // If the location is beyond the goal, skip
-//                if ((isplayer1 && curr_position.x < -threshold) || (!isplayer1 && curr_position.x > threshold)) {
-//                    continue;
-//                }
-//                blitz_done = false;
-//                // If the location is able to move +- degree_increase, move it. Else, try another id.
-//                double theta_up = 0;
-//                double theta_down = 0;
-//                double delta_x = 0;
-//                double delta_y_up = 0;
-//                double delta_y_down = 0;
-//                Point new_position_up = new Point(curr_position);
-//                Point new_position_down = new Point(curr_position);
-//                if (isplayer1) {
-//                    // going left...
-//                    // try up 135 degrees
-//                    theta_up = (1 - degree_increase) * Math.PI;
-//                    // Try down 225 degrees
-//                    theta_down = (1 + degree_increase) * Math.PI;
-//
-//                    delta_x = diameter_piece * Math.cos(theta_up);
-//                    delta_y_up = diameter_piece * Math.sin(theta_up);
-//                    delta_y_down = diameter_piece * Math.sin(theta_down);
-//
-//                    new_position_up.x -= delta_x;
-//                    new_position_down.x -= delta_x;
-//
-//                    new_position_up.y += delta_y_up;
-//                    new_position_down.y += delta_y_down;
-//
-//                } else {
-//                    // going right.
-//                    // Try up 45 degrees
-//                    theta_up = (0 + degree_increase) * Math.PI;
-//                    // Try down 315 degrees
-//                    theta_down = (0 - degree_increase) * Math.PI;
-//
-//                    delta_x = diameter_piece * Math.cos(theta_up);
-//                    delta_y_up = diameter_piece * Math.sin(theta_up);
-//                    delta_y_down = diameter_piece * Math.sin(theta_down);
-//
-//                    new_position_up.x += delta_x;
-//                    new_position_down.x += delta_x;
-//
-//                    new_position_up.y += delta_y_up;
-//                    new_position_down.y += delta_y_down;
-//
-//
-//                }
-//                Pair<Integer, Point> move_up = new Pair<Integer, Point>(id, new_position_up);
-//                Pair<Integer, Point> move_down = new Pair<Integer, Point>(id, new_position_down);
-//
-//
-//                if (check_validity(move_up, player_pieces, opponent_pieces)) {
-//                    moves.add(move_up);
-//                    player_pieces.put(id, move_up.getValue());
-//                    id -= 1;
-//                } else if (check_validity(move_down, player_pieces, opponent_pieces)) {
-//                    moves.add(move_down);
-//                    player_pieces.put(id, move_down.getValue());
-//                    id -= 1;
-//                }
-//            }
-//        }
-//
-//        return moves;
-//    }
-
     public void updateState(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
         switch (currentState) {
             case INITIAL_STATE: {
@@ -587,7 +411,7 @@ public class Player implements flip.sim.Player {
             return moves;
         }
         List<Point> goalPoints = new Vector<Point>();
-        double howClose = 2.3;
+        double howClose = 2.8;
         if (goalCoin.y > 19 - howClose) {
             goalPoints.add(new Point(goalCoin.x - sign * howClose, goalCoin.y));
             goalPoints.add(new Point(goalCoin.x, goalCoin.y + howClose));
@@ -1008,7 +832,7 @@ public class Player implements flip.sim.Player {
         double distance = getDistance(start, goal);
         if (Board.almostEqual(distance, 0)) {
             return moves;
-        } else if (Board.almostEqual(distance, 2)) {
+        } else if (check_validity(new Pair<Integer, Point>(coin, goal), playerPieces, opponentPieces) && Board.almostEqual(distance, 2)) {
             moves.add(new Pair<Integer, Point>(coin, goal));
         } else if (distance < diameter_piece * 2) {
             double x1 = 0.5 * (goal.x + start.x);
@@ -1035,8 +859,9 @@ public class Player implements flip.sim.Player {
                         moves.add(move2);
                     }
                 } else {
+                    Log.log("Try block");
                     move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                    if (moves.size() < numMoves && check_validity(move, playerPieces, opponentPieces)) {
+                    if (moves.size() < numMoves && move != null && check_validity(move, playerPieces, opponentPieces)) {
                         moves.add(move);
                         playerPieces.put(coin, move.getValue());
                         Pair<Integer, Point> move2 = new Pair<Integer, Point>(coin, new Point(goal.x, goal.y));
@@ -1044,11 +869,12 @@ public class Player implements flip.sim.Player {
                             moves.add(move2);
                         } else {
                             move2 = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                            if (moves.size() < numMoves && check_validity(move2, playerPieces, opponentPieces) && move2 != null) {
+                            if (moves.size() < numMoves && move2 != null && check_validity(move2, playerPieces, opponentPieces)) {
                                 moves.add(move2);
                             }
                         }
                     }
+                    Log.log("moves" + moves + start);
                 }
             }
         } else {
@@ -1064,14 +890,14 @@ public class Player implements flip.sim.Player {
                     moves.add(move4);
                 } else {
                     move4 = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                    if (moves.size() < numMoves && check_validity(move4, playerPieces, opponentPieces) && move4 != null) {
+                    if (moves.size() < numMoves && move4 != null && check_validity(move4, playerPieces, opponentPieces)) {
                         moves.add(move4);
                     }
                 }
 
             } else {
                 move = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                if (moves.size() < numMoves && check_validity(move, playerPieces, opponentPieces) && move != null) {
+                if (moves.size() < numMoves && move != null && check_validity(move, playerPieces, opponentPieces)) {
                     moves.add(move);
                     playerPieces.put(coin, move.getValue());
                 }
@@ -1082,11 +908,10 @@ public class Player implements flip.sim.Player {
                     moves.add(move4);
                 } else {
                     move4 = findNextPathToGetOverBlock(coin, playerPieces, opponentPieces, goal);
-                    if (moves.size() < numMoves && check_validity(move4, playerPieces, opponentPieces) && move4 != null) {
+                    if (moves.size() < numMoves && move4 != null && check_validity(move4, playerPieces, opponentPieces)) {
                         moves.add(move4);
                     }
                 }
-
             }
         }
         return moves;
@@ -1116,6 +941,9 @@ public class Player implements flip.sim.Player {
         for (int i = 0; i < n; i++) {
             Point curr_position = player_pieces.get(i);
             if (shouldStop(player_pieces, opponent_pieces, i))
+                continue;
+            Integer piece_id = i;
+            if (Arrays.stream(wallMatching).anyMatch(x -> x == piece_id))
                 continue;
             int count = 0;
             for (Point point : opponent_pieces.values()) {
