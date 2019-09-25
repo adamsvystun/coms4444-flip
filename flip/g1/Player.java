@@ -58,7 +58,6 @@ public class Player implements flip.sim.Player {
             WALL_BUILT,
             WALL_FLIP,
             WALL_FLIP_PREPARE,
-            TRAPPING,
             TRAPPING_FORWARD,
             TRAPPING_ClEANUP,
             FORWARD,
@@ -68,9 +67,7 @@ public class Player implements flip.sim.Player {
             STUCK,
             BFS,
             RANDOM
-        }
-
-        ;
+        };
 
         private State currentState = State.INITIAL_STATE;
 
@@ -162,14 +159,14 @@ public class Player implements flip.sim.Player {
                         moves = getTrappingMoves(moves, num_moves, player_pieces, opponent_pieces);
                         break;
                     }
-                    case TRAPPED_BLITZ_INCOMPLETE:{
+                    case TRAPPING_BLITZ_INCOMPLETE:{
                         moves = getBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
                         if (currentState == State.TRAPPING_BLITZ_COMPLETE && moves.size()<num_moves){
                             moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
                         }
                         break;
                     }
-                    case TRAPPED_BLITZ_COMPLETE:{
+                    case TRAPPING_BLITZ_COMPLETE:{
                         break;
                     }
                     case WALL_BUILDING: {
@@ -206,7 +203,7 @@ public class Player implements flip.sim.Player {
                     moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
                 }
             }
-            currentState = State.TRAPPING_BLITZ_COMPLETE;
+//            currentState = State.TRAPPING_BLITZ_COMPLETE;
             return moves;
         }
 
@@ -297,12 +294,12 @@ public class Player implements flip.sim.Player {
 
                     if (check_validity(move_up, player_pieces, opponent_pieces)){
                         moves.add(move_up);
-                        player_pieces.put(id, move_up);
+                        player_pieces.put(id, move_up.getValue());
                         id-=1;
                     }
                     else if (check_validity(move_down, player_pieces, opponent_pieces)){
                         moves.add(move_down);
-                        player_pieces.put(id, move_down);
+                        player_pieces.put(id, move_down.getValue());
                         id-=1;
                     }
                 }
@@ -334,7 +331,7 @@ public class Player implements flip.sim.Player {
                     } else if (checkIfGapStrategyShouldBeUsed()) {
                         currentState = State.FINDING_GAP;
                     } else if (checkIfTrapingStrategyShouldBeUsed(opponent_pieces)) {
-                        currentState = State.TRAPING;
+                        currentState = State.TRAPPING;
                     } else {
                         currentState = State.FORWARD;
                     }
@@ -382,7 +379,7 @@ public class Player implements flip.sim.Player {
             return false;
         }
 
-        public List<Pair<Integer, Point>> getTrapingMoves(
+        public List<Pair<Integer, Point>> getTrappingMoves(
                 List<Pair<Integer, Point>> moves,
                 Integer num_moves,
                 HashMap<Integer, Point> player_pieces,
@@ -395,30 +392,32 @@ public class Player implements flip.sim.Player {
             }
             List<Point> goalPoints = new Vector<Point>();
             if (goalCoin.y > 17) {
-                goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
-                goalPoints.add(new Point(goalCoin.x + 2.1, goalCoin.y));
-                goalPoints.add(new Point(goalCoin.x - 2.1, goalCoin.y));
-            } else if (goalCoin.y < -17) {
-                goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
-                goalPoints.add(new Point(goalCoin.x + 2.1, goalCoin.y));
-                goalPoints.add(new Point(goalCoin.x - 2.1, goalCoin.y));
-            } else if (sign * goalCoin.x > 57) {
-                goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
-                goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
                 goalPoints.add(new Point(goalCoin.x - sign * 2.1, goalCoin.y));
+                goalPoints.add(new Point(goalCoin.x + sign * 2.1, goalCoin.y));
+                goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
+            } else if (goalCoin.y < -17) {
+                goalPoints.add(new Point(goalCoin.x - sign * 2.1, goalCoin.y));
+                goalPoints.add(new Point(goalCoin.x + sign * 2.1, goalCoin.y));
+                goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
+            } else if (sign * goalCoin.x > 57) {
+                goalPoints.add(new Point(goalCoin.x - sign * 2.1, goalCoin.y));
+                goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
+                goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
             } else {
+                goalPoints.add(new Point(goalCoin.x - sign * 2.1, goalCoin.y));
+                goalPoints.add(new Point(goalCoin.x + sign * 2.1, goalCoin.y));
                 goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
                 goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
-                goalPoints.add(new Point(goalCoin.x + 2.1, goalCoin.y));
-                goalPoints.add(new Point(goalCoin.x - 2.1, goalCoin.y));
             }
             // Find the coin furthest away
             List<Integer> usedCoins = new Vector<Integer>();
+            Trapper_IDs = new Vector<Integer>();
             List<Pair<Point, Integer>> goalCoinMap = new Vector<Pair<Point, Integer>>();
             for (Point goalPoint : goalPoints) {
                 Integer c = checkOurCoinInPlace(goalPoint, player_pieces);
                 if (c != null) {
                     usedCoins.add(c);
+                    Trapper_IDs.add(c);
                     continue;
                 }
                 Pair<Integer, Double> result = findClosesPoint(player_pieces, goalPoint.x, goalPoint.y, usedCoins);
@@ -426,6 +425,8 @@ public class Player implements flip.sim.Player {
                 goalCoinMap.add(new Pair(goalPoint, coinIndex));
                 usedCoins.add(coinIndex);
             }
+            Log.log("goalPoints " + goalPoints);
+            Log.log("Trapper_IDs " + Trapper_IDs);
             // Move the coins to the goal
             if (moves.size() < num_moves) {
                 for (Pair<Point, Integer> mapping : goalCoinMap) {
