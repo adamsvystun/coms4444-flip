@@ -26,7 +26,7 @@ public class Player implements flip.sim.Player {
         private Double density_lane_gap = 1.0;
         private Integer sign;
         private Integer wall_back = 20 - 2;
-        private Integer wall_front = 20 + 4;
+        private Integer wall_front = 20 + 2;
         private Integer threshold_to_attack_wall = 3;
         private Double same_x_diff = 1.0;
         private Double same_y_diff = 3.5;
@@ -85,7 +85,7 @@ public class Player implements flip.sim.Player {
             this.sign = isplayer1 ? -1 : 1;
             this.diameter_piece = diameter_piece;
             this.pieces = pieces;
-            this.wallX = -sign * 20.0;
+            this.wallX = -sign * 21.5;
             if (n >= 11) {
                 this.calculateMatching();
             }
@@ -153,57 +153,59 @@ public class Player implements flip.sim.Player {
 
             List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-            while (moves.size() < num_moves) {
-                switch (currentState) {
-                    case TRAPPING:{
-                        moves = getTrappingMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        break;
-                    }
-                    case TRAPPING_BLITZ_INCOMPLETE:{
-                        moves = getBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        if (currentState == State.TRAPPING_BLITZ_COMPLETE && moves.size()<num_moves){
-                            moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        }
-                        break;
-                    }
-                    case TRAPPING_BLITZ_COMPLETE:{
-                        break;
-                    }
-                    case WALL_BUILDING: {
-                        moves = getWallMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        break;
-                    }
-                    case FINDING_GAP: {
-                        moves = getGapFindMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        break;
-                    }
-                    case FORWARD: {
-                        moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        break;
-                    }
-                    case WALL_FLIP_PREPARE: {
-                        moves = getWallFlipPrepareMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        break;
-                    }
-                    case CHICKEN_GAME: {
-                        moves = getChichenGameMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        break;
-                    }
-                    case BFS: {
-                        moves = getBFSMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        break;
-                    }
-                    default:
-                    case RANDOM: {
-                        moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        break;
-                    }
+            switch (currentState) {
+                case TRAPPING:{
+                    moves = getTrappingMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    break;
                 }
-                if (moves.size() < num_moves) {
+                case TRAPPING_BLITZ_INCOMPLETE:{
+                    moves = getBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    if (currentState == State.TRAPPING_BLITZ_COMPLETE && moves.size()<num_moves){
+                        moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    }
+                    break;
+                }
+                case TRAPPING_BLITZ_COMPLETE:{
+                    break;
+                }
+                case WALL_BUILDING: {
+                    moves = getWallMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    break;
+                }
+                case FINDING_GAP: {
+                    moves = getGapFindMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    Log.log("Moves: " + moves.size());
+                    break;
+                }
+                case FORWARD: {
+                    moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    break;
+                }
+                case WALL_FLIP_PREPARE: {
+                    moves = getWallFlipPrepareMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    break;
+                }
+                case CHICKEN_GAME: {
+                    moves = getChichenGameMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    break;
+                }
+                case BFS: {
+                    moves = getBFSMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    break;
+                }
+                default:
+                case RANDOM: {
                     moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
+                    break;
                 }
             }
-//            currentState = State.TRAPPING_BLITZ_COMPLETE;
+            if (moves.size() < num_moves) {
+                moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
+            }
+            if (moves.size() < num_moves) {
+                moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
+            }
+
             return moves;
         }
 
@@ -309,24 +311,14 @@ public class Player implements flip.sim.Player {
             return moves;
         }
 
-
-
-
-
-
-
-
-
         public void updateState(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
             switch (currentState) {
                 case INITIAL_STATE: {
-                    if (n == 1) {
+                    if (checkIfChikenGameStrategyShouldBeUsed()) {
                         currentState = State.CHICKEN_GAME;
-                    }
-    //                else if (n >= 2 && n <= 5) {
-    //                    currentState = State.BFS;
-    //                }
-                    else if (checkIfWallStrategyShouldBeUsed()) {
+                    } else if (checkIfBFSStrategyShouldBeUsed()) {
+                        currentState = State.BFS;
+                    } else if (checkIfWallStrategyShouldBeUsed()) {
                         currentState = State.WALL_BUILDING;
                     } else if (checkIfGapStrategyShouldBeUsed()) {
                         currentState = State.FINDING_GAP;
@@ -350,24 +342,32 @@ public class Player implements flip.sim.Player {
             }
         }
 
+        public boolean checkIfChikenGameStrategyShouldBeUsed() {
+            return n == 1;
+        }
+
+        public boolean checkIfBFSStrategyShouldBeUsed() {
+            return n >= 2 && n <= 5;
+        }
+
         public boolean checkIfWallStrategyShouldBeUsed() {
-            return n >= 12;
+            return n >= 13;
         }
 
         public boolean checkIfTrapingStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
-            if (n < 5 || n > 10) {
+            if (n <= 5 || n > 10) {
                 return false;
             }
-            boolean opponentBehind = false;
-            for (Point coin : opponent_pieces.values()) {
-                if ((isplayer1 && coin.x < -21) || (!isplayer1 && coin.x > 21)) {
-                    opponentBehind = true;
-                    break;
-                }
-            }
-            if (!opponentBehind) {
-                return false;
-            }
+            // boolean opponentBehind = false;
+            // for (Point coin : opponent_pieces.values()) {
+            //     if ((isplayer1 && coin.x < -21) || (!isplayer1 && coin.x > 21)) {
+            //         opponentBehind = true;
+            //         break;
+            //     }
+            // }
+            // if (!opponentBehind) {
+            //     return false;
+            // }
             return true;
         }
 
@@ -376,7 +376,7 @@ public class Player implements flip.sim.Player {
         }
 
         public boolean checkIfGapStrategyShouldBeUsed() {
-            return false;
+            return n >= 10 && n <= 12;
         }
 
         public List<Pair<Integer, Point>> getTrappingMoves(
@@ -467,7 +467,13 @@ public class Player implements flip.sim.Player {
             //Add all the points at the valid range of formming wall
             List<Point> wallList = new ArrayList<>();
             for (Point point : opponent_pieces.values()) {
-                if ((!isplayer1 && point.x > wall_back && point.x < wall_front) || (isplayer1 && point.x < -wall_back && point.x > -wall_front))
+                if (
+                        (
+                                !isplayer1 && point.x > wall_back && point.x < wall_front
+                        ) || (
+                                isplayer1 && point.x < -wall_back && point.x > -wall_front
+                        )
+                )
                     wallList.add(point);
             }
             return wallList;
@@ -490,6 +496,9 @@ public class Player implements flip.sim.Player {
         ) {
             List<Point> list = getGapStrategyShouldBeUsed(opponent_pieces);
             Collections.sort(list, (a, b) -> Double.compare(b.y, a.y));
+            if(list.size() == 0) {
+                return moves;
+            }
             // Add the bottom line
             list.add(new Point(list.get(list.size() - 1).x, -20));
             double maxGap = -1;
@@ -506,6 +515,9 @@ public class Player implements flip.sim.Player {
                     x = isplayer1 ? Math.min(pre.x, list.get(i).x) : Math.max(pre.x, list.get(i).x);
                 }
                 pre = list.get(i);
+            }
+            if(x > sign * 21) {
+                x = sign * 21;
             }
             Point gapPoint = new Point(x, (top + down) / 2);
             // For now, just move the quickest one that falls into the maximum gap.
@@ -902,8 +914,7 @@ public class Player implements flip.sim.Player {
 
             for (int i = 0; i < n; i++) {
                 Point curr_position = player_pieces.get(i);
-                Pair<Integer, Point> move = new Pair<Integer, Point>(i, new Point(curr_position.x + sign * 2, curr_position.y));
-                if (shouldStop(player_pieces, opponent_pieces, i) || !check_validity(move, player_pieces, opponent_pieces))
+                if (shouldStop(player_pieces, opponent_pieces, i))
                     continue;
                 int count = 0;
                 for (Point point : opponent_pieces.values()) {
@@ -933,18 +944,21 @@ public class Player implements flip.sim.Player {
             }
             if (low1Id != -1) {
                 Point point1 = player_pieces.get(low1Id);
-                Pair<Integer, Point> move1 = new Pair<Integer, Point>(low1Id, new Point(point1.x + sign * 2, point1.y));
-                moves.add(move1);
-                Pair<Integer, Point> move2 = new Pair<Integer, Point>(low1Id, new Point(point1.x + sign * 4, point1.y));
-                //We should check if the current node has got into the stop area, if so, do movement for the other nodes.
-                if (check_validity(move2, player_pieces, opponent_pieces)
-                        && ((isplayer1 && point1.x + sign * 2 > -threshold) || (!isplayer1 && point1.x + sign * 2 < threshold)))
-                    moves.add(move2);
-                else if (low2Id != -1) {
-                    Point point2 = player_pieces.get(low2Id);
-                    Pair<Integer, Point> move3 = new Pair<Integer, Point>(low2Id, new Point(point2.x + sign * 2, point2.y));
-                    moves.add(move3);
-                }
+                return findMovesToPoint(moves, low1Id, point1, new Point(sign * 40, point1.y), num_moves, player_pieces, opponent_pieces);
+//                Pair<Integer, Point> move1 = new Pair<Integer, Point>(low1Id, new Point(point1.x + sign * 2, point1.y));
+//                moves.add(move1);
+//                Pair<Integer, Point> move2 = new Pair<Integer, Point>(low1Id, new Point(point1.x + sign * 4, point1.y));
+//                //We should check if the current node has got into the stop area, if so, do movement for the other nodes.
+//                if (check_validity(move2, player_pieces, opponent_pieces)
+//                        && ((isplayer1 && point1.x + sign * 2 > -threshold) || (!isplayer1 && point1.x + sign * 2 < threshold)))
+//                    moves.add(move2);
+//                else if (low2Id != -1) {
+//                    Point point2 = player_pieces.get(low2Id);
+//                    Pair<Integer, Point> move3 = new Pair<Integer, Point>(low2Id, new Point(point2.x + sign * 2, point2.y));
+//                    moves.add(move3);
+//                } else {
+//
+//                }
             }
             return moves;
         }
