@@ -427,6 +427,10 @@ public class Player implements flip.sim.Player {
             }
             Log.log("goalPoints " + goalPoints);
             Log.log("Trapper_IDs " + Trapper_IDs);
+            if(Trapper_IDs.size() == goalPoints.size()) {
+                currentState = State.TRAPPING_BLITZ_INCOMPLETE;
+                return moves;
+            }
             // Move the coins to the goal
             if (moves.size() < num_moves) {
                 for (Pair<Point, Integer> mapping : goalCoinMap) {
