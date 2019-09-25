@@ -155,75 +155,66 @@ public class Player implements flip.sim.Player {
 
         List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-                Log.log("CURRENT STATE: " + currentState);
-                switch (currentState) {
-                    case TRAPPING:{
-                        moves = getTrappingMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        break;
-                    }
-                    case TRAPPING_BLITZ_INCOMPLETE:{
-                        Log.log("In Trapping Blitz Incomplete");
-                        moves = getBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        if (currentState == State.TRAPPING_BLITZ_COMPLETE && moves.size()<num_moves){
-                            Log.log("Edge moving to getPostBlitzMoves");
-                            moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
-                        }
-                        break;
-                    }
-                case TRAPPING_BLITZ_COMPLETE: {
-                    Log.log("In Trapping Blitz COMPLETE");
-                    if(moves.size() == 1) {
-                        return moves;
-                    }
-                    moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case WALL_BUILDING: {
-                    moves = getWallMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case FINDING_GAP: {
-                    moves = getGapFindMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case FORWARD: {
-                    moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case WALL_FLIP_PREPARE: {
-                    moves = getWallFlipPrepareMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case CHICKEN_GAME: {
-                    moves = getChichenGameMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case BFS: {
-                    moves = getBFSMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                default:
-                case RANDOM: {
-                    moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                if (moves.size() < num_moves) {
-                    moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
-                }
-                if (moves.size() < num_moves) {
-                    moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
-                }
-
-
-            return moves;
-        }
+        Log.log("CURRENT STATE: " + currentState);
+        switch (currentState) {
+            case TRAPPING: {
+                moves = getTrappingMoves(moves, num_moves, player_pieces, opponent_pieces);
+                break;
             }
-//            if (moves.size() < num_moves) {
-//                moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
-//            }
-        }
-//            currentState = State.TRAPPING_BLITZ_COMPLETE;
+            case TRAPPING_BLITZ_INCOMPLETE: {
+                Log.log("In Trapping Blitz Incomplete");
+                moves = getBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
+                if (currentState == State.TRAPPING_BLITZ_COMPLETE && moves.size() < num_moves) {
+                    Log.log("Edge moving to getPostBlitzMoves");
+                    moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
+                }
+                break;
+            }
+            case TRAPPING_BLITZ_COMPLETE: {
+                Log.log("In Trapping Blitz COMPLETE");
+                if (moves.size() == 1) {
+                    return moves;
+                }
+                moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
+                break;
+            }
+            case WALL_BUILDING: {
+                moves = getWallMoves(moves, num_moves, player_pieces, opponent_pieces);
+                break;
+            }
+            case FINDING_GAP: {
+                moves = getGapFindMoves(moves, num_moves, player_pieces, opponent_pieces);
+                break;
+            }
+            case FORWARD: {
+                moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
+                break;
+            }
+            case WALL_FLIP_PREPARE: {
+                moves = getWallFlipPrepareMoves(moves, num_moves, player_pieces, opponent_pieces);
+                break;
+            }
+            case CHICKEN_GAME: {
+                moves = getChichenGameMoves(moves, num_moves, player_pieces, opponent_pieces);
+                break;
+            }
+            case BFS: {
+                moves = getBFSMoves(moves, num_moves, player_pieces, opponent_pieces);
+                break;
+            }
+            default:
+            case RANDOM: {
+                moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
+                break;
+            }
 
+        }
+        if (moves.size() < num_moves) {
+            moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
+        }
+        if (moves.size() < num_moves) {
+            moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
+        }
         return moves;
     }
 
@@ -340,23 +331,15 @@ public class Player implements flip.sim.Player {
                 Log.log("Valid straight move!" + curr_position + " / " + straightMove.getValue());
                 moves.add(straightMove);
                 player_pieces.put(id, straightMove.getValue());
-                id_index+=1;
-            }
-            else{
+                id_index += 1;
+            } else {
                 Point goalPoint = new Point(curr_position);
                 if (isplayer1) {
                     goalPoint.x = -30;
                 } else {
                     goalPoint.x = 30;
                 }
-                Pair<Integer, Point> optimalMove = findNextPathToGetOverBlock(id, opponent_pieces, player_pieces, goalPoint);
-                if (check_validity(optimalMove, player_pieces, opponent_pieces)) {
-                    moves.add(optimalMove);
-                    player_pieces.put(id, optimalMove.getValue());
-                    id_index += 1;
-                } else {
-                    Log.log("invalid move!");
-                }
+                moves = findMovesToPoint(moves, id, curr_position, goalPoint, num_moves, player_pieces, opponent_pieces);
             }
         }
         return moves;
@@ -428,15 +411,7 @@ public class Player implements flip.sim.Player {
                 Log.log("StraightMove no good.");
                 Point goalPoint = new Point(curr_position);
                 goalPoint.x = sign * 40;
-                Pair<Integer, Point> optimalMove = findNextPathToGetOverBlock(id, opponent_pieces, player_pieces, goalPoint);
-                if (check_validity(optimalMove, player_pieces, opponent_pieces)) {
-                    Log.log("Valid move.");
-                    moves.add(optimalMove);
-                    player_pieces.put(id, optimalMove.getValue());
-                    id -= 1;
-                } else {
-                    Log.log("invalid move!");
-                }
+                moves = findMovesToPoint(moves, id, curr_position, goalPoint, num_moves, player_pieces, opponent_pieces);
             }
         }
         return moves;
@@ -444,161 +419,161 @@ public class Player implements flip.sim.Player {
     }
 
 
-    public List<Pair<Integer, Point>> getBlitzMoves_bad(
-            List<Pair<Integer, Point>> moves,
-            Integer num_moves,
-            HashMap<Integer, Point> player_pieces,
-            HashMap<Integer, Point> opponent_pieces
-    ) {
-        boolean blitz_done = false;
-        double degree_increase = 0;
-        while (!blitz_done) {
-            if (moves.size() == num_moves) {
-                return moves;
-            }
-            //Strategy: greedily move
-            // Future optimization: Make it move the last ones first
-            blitz_done = true;
-            for (int id = 0; id < n; id++) {
-                if (Trapper_IDs.contains(id)) {
-                    continue;
-                }
-                Point curr_position = player_pieces.get(id);
-                // If the location is beyond the goal, skip
-                if ((isplayer1 && curr_position.x < -threshold) || (!isplayer1 && curr_position.x > threshold)) {
-                    continue;
-                }
-                blitz_done = false;
-                // If the location is able to move +- degree_increase, move it. Else, try another id.
-                double theta_up = 0;
-                double theta_down = 0;
-                double delta_x = 0;
-                double delta_y_up = 0;
-                double delta_y_down = 0;
-                Point new_position_up = new Point(curr_position);
-                Point new_position_down = new Point(curr_position);
-                if (isplayer1) {
-                    // going left...
-                    // try up 135 degrees
-                    theta_up = (1 - degree_increase) * Math.PI;
-                    // Try down 225 degrees
-                    theta_down = (1 + degree_increase) * Math.PI;
+//    public List<Pair<Integer, Point>> getBlitzMoves_bad(
+//            List<Pair<Integer, Point>> moves,
+//            Integer num_moves,
+//            HashMap<Integer, Point> player_pieces,
+//            HashMap<Integer, Point> opponent_pieces
+//    ) {
+//        boolean blitz_done = false;
+//        double degree_increase = 0;
+//        while (!blitz_done) {
+//            if (moves.size() == num_moves) {
+//                return moves;
+//            }
+//            //Strategy: greedily move
+//            // Future optimization: Make it move the last ones first
+//            blitz_done = true;
+//            for (int id = 0; id < n; id++) {
+//                if (Trapper_IDs.contains(id)) {
+//                    continue;
+//                }
+//                Point curr_position = player_pieces.get(id);
+//                // If the location is beyond the goal, skip
+//                if ((isplayer1 && curr_position.x < -threshold) || (!isplayer1 && curr_position.x > threshold)) {
+//                    continue;
+//                }
+//                blitz_done = false;
+//                // If the location is able to move +- degree_increase, move it. Else, try another id.
+//                double theta_up = 0;
+//                double theta_down = 0;
+//                double delta_x = 0;
+//                double delta_y_up = 0;
+//                double delta_y_down = 0;
+//                Point new_position_up = new Point(curr_position);
+//                Point new_position_down = new Point(curr_position);
+//                if (isplayer1) {
+//                    // going left...
+//                    // try up 135 degrees
+//                    theta_up = (1 - degree_increase) * Math.PI;
+//                    // Try down 225 degrees
+//                    theta_down = (1 + degree_increase) * Math.PI;
+//
+//                    delta_x = diameter_piece * Math.cos(theta_up);
+//                    delta_y_up = diameter_piece * Math.sin(theta_up);
+//                    delta_y_down = diameter_piece * Math.sin(theta_down);
+//
+//                    new_position_up.x -= delta_x;
+//                    new_position_down.x -= delta_x;
+//
+//                    new_position_up.y += delta_y_up;
+//                    new_position_down.y += delta_y_down;
+//
+//                } else {
+//                    // going right.
+//                    // Try up 45 degrees
+//                    theta_up = (0 + degree_increase) * Math.PI;
+//                    // Try down 315 degrees
+//                    theta_down = (0 - degree_increase) * Math.PI;
+//
+//                    delta_x = diameter_piece * Math.cos(theta_up);
+//                    delta_y_up = diameter_piece * Math.sin(theta_up);
+//                    delta_y_down = diameter_piece * Math.sin(theta_down);
+//
+//                    new_position_up.x += delta_x;
+//                    new_position_down.x += delta_x;
+//
+//                    new_position_up.y += delta_y_up;
+//                    new_position_down.y += delta_y_down;
+//
+//
+//                }
+//                Pair<Integer, Point> move_up = new Pair<Integer, Point>(id, new_position_up);
+//                Pair<Integer, Point> move_down = new Pair<Integer, Point>(id, new_position_down);
+//
+//
+//                if (check_validity(move_up, player_pieces, opponent_pieces)) {
+//                    moves.add(move_up);
+//                    player_pieces.put(id, move_up.getValue());
+//                    id -= 1;
+//                } else if (check_validity(move_down, player_pieces, opponent_pieces)) {
+//                    moves.add(move_down);
+//                    player_pieces.put(id, move_down.getValue());
+//                    id -= 1;
+//                }
+//            }
+//        }
+//
+//        return moves;
+//    }
 
-                    delta_x = diameter_piece * Math.cos(theta_up);
-                    delta_y_up = diameter_piece * Math.sin(theta_up);
-                    delta_y_down = diameter_piece * Math.sin(theta_down);
-
-                    new_position_up.x -= delta_x;
-                    new_position_down.x -= delta_x;
-
-                    new_position_up.y += delta_y_up;
-                    new_position_down.y += delta_y_down;
-
+    public void updateState(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
+        switch (currentState) {
+            case INITIAL_STATE: {
+                if (checkIfChikenGameStrategyShouldBeUsed()) {
+                    currentState = State.CHICKEN_GAME;
+                } else if (checkIfBFSStrategyShouldBeUsed()) {
+                    currentState = State.BFS;
+                } else if (checkIfWallStrategyShouldBeUsed()) {
+                    currentState = State.WALL_BUILDING;
+                } else if (checkIfGapStrategyShouldBeUsed()) {
+                    currentState = State.FINDING_GAP;
+                } else if (checkIfTrapingStrategyShouldBeUsed(opponent_pieces)) {
+                    currentState = State.TRAPPING;
                 } else {
-                    // going right.
-                    // Try up 45 degrees
-                    theta_up = (0 + degree_increase) * Math.PI;
-                    // Try down 315 degrees
-                    theta_down = (0 - degree_increase) * Math.PI;
-
-                    delta_x = diameter_piece * Math.cos(theta_up);
-                    delta_y_up = diameter_piece * Math.sin(theta_up);
-                    delta_y_down = diameter_piece * Math.sin(theta_down);
-
-                    new_position_up.x += delta_x;
-                    new_position_down.x += delta_x;
-
-                    new_position_up.y += delta_y_up;
-                    new_position_down.y += delta_y_down;
-
-
+                    currentState = State.FORWARD;
                 }
-                Pair<Integer, Point> move_up = new Pair<Integer, Point>(id, new_position_up);
-                Pair<Integer, Point> move_down = new Pair<Integer, Point>(id, new_position_down);
-
-
-                if (check_validity(move_up, player_pieces, opponent_pieces)) {
-                    moves.add(move_up);
-                    player_pieces.put(id, move_up.getValue());
-                    id -= 1;
-                } else if (check_validity(move_down, player_pieces, opponent_pieces)) {
-                    moves.add(move_down);
-                    player_pieces.put(id, move_down.getValue());
-                    id -= 1;
+                break;
+            }
+            case WALL_BUILT: {
+                if (checkIfWallFlipCanBeDone()) {
+                    currentState = State.WALL_FLIP;
+                } else if (checkIfWallFlipShouldBePrepared(player_pieces)) {
+                    currentState = State.WALL_FLIP_PREPARE;
+                } else {
+                    currentState = State.FORWARD;
                 }
+                break;
             }
         }
-
-        return moves;
     }
 
-        public void updateState(Integer num_moves, HashMap<Integer, Point> player_pieces, HashMap<Integer, Point> opponent_pieces) {
-            switch (currentState) {
-                case INITIAL_STATE: {
-                    if (checkIfChikenGameStrategyShouldBeUsed()) {
-                        currentState = State.CHICKEN_GAME;
-                    } else if (checkIfBFSStrategyShouldBeUsed()) {
-                        currentState = State.BFS;
-                    } else if (checkIfWallStrategyShouldBeUsed()) {
-                        currentState = State.WALL_BUILDING;
-                    } else if (checkIfGapStrategyShouldBeUsed()) {
-                        currentState = State.FINDING_GAP;
-                    } else if (checkIfTrapingStrategyShouldBeUsed(opponent_pieces)) {
-                        currentState = State.TRAPPING;
-                    } else {
-                        currentState = State.FORWARD;
-                    }
-                    break;
-                }
-                case WALL_BUILT: {
-                    if (checkIfWallFlipCanBeDone()) {
-                        currentState = State.WALL_FLIP;
-                    } else if (checkIfWallFlipShouldBePrepared(player_pieces)) {
-                        currentState = State.WALL_FLIP_PREPARE;
-                    } else {
-                        currentState = State.FORWARD;
-                    }
-                    break;
-                }
-            }
-        }
+    public boolean checkIfChikenGameStrategyShouldBeUsed() {
+        return n == 1;
+    }
 
-        public boolean checkIfChikenGameStrategyShouldBeUsed() {
-            return n == 1;
-        }
+    public boolean checkIfBFSStrategyShouldBeUsed() {
+        return n >= 2 && n <= 5;
+    }
 
-        public boolean checkIfBFSStrategyShouldBeUsed() {
-            return n >= 2 && n <= 5;
-        }
+    public boolean checkIfWallStrategyShouldBeUsed() {
+        return n >= 13;
+    }
 
-        public boolean checkIfWallStrategyShouldBeUsed() {
-            return n >= 13;
+    public boolean checkIfTrapingStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
+        if (n <= 5 || n > 10) {
+            return false;
         }
-
-        public boolean checkIfTrapingStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
-            if (n <= 5 || n > 10) {
-                return false;
-            }
-            // boolean opponentBehind = false;
-            // for (Point coin : opponent_pieces.values()) {
-            //     if ((isplayer1 && coin.x < -21) || (!isplayer1 && coin.x > 21)) {
-            //         opponentBehind = true;
-            //         break;
-            //     }
-            // }
-            // if (!opponentBehind) {
-            //     return false;
-            // }
-            return true;
-        }
+        // boolean opponentBehind = false;
+        // for (Point coin : opponent_pieces.values()) {
+        //     if ((isplayer1 && coin.x < -21) || (!isplayer1 && coin.x > 21)) {
+        //         opponentBehind = true;
+        //         break;
+        //     }
+        // }
+        // if (!opponentBehind) {
+        //     return false;
+        // }
+        return true;
+    }
 
     public boolean checkIfWallFlipCanBeDone() {
         return false;
     }
 
-        public boolean checkIfGapStrategyShouldBeUsed() {
-            return n >= 10 && n <= 12;
-        }
+    public boolean checkIfGapStrategyShouldBeUsed() {
+        return n > 10 && n <= 12;
+    }
 
     public List<Pair<Integer, Point>> getTrappingMoves(
             List<Pair<Integer, Point>> moves,
@@ -614,21 +589,21 @@ public class Player implements flip.sim.Player {
         List<Point> goalPoints = new Vector<Point>();
         if (goalCoin.y > 17) {
             goalPoints.add(new Point(goalCoin.x - sign * 2.1, goalCoin.y));
-            goalPoints.add(new Point(goalCoin.x + sign * 2.1, goalCoin.y));
             goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
+            goalPoints.add(new Point(goalCoin.x + sign * 2.1, goalCoin.y));
         } else if (goalCoin.y < -17) {
             goalPoints.add(new Point(goalCoin.x - sign * 2.1, goalCoin.y));
-            goalPoints.add(new Point(goalCoin.x + sign * 2.1, goalCoin.y));
             goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
+            goalPoints.add(new Point(goalCoin.x + sign * 2.1, goalCoin.y));
         } else if (sign * goalCoin.x > 57) {
             goalPoints.add(new Point(goalCoin.x - sign * 2.1, goalCoin.y));
             goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
             goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
         } else {
             goalPoints.add(new Point(goalCoin.x - sign * 2.1, goalCoin.y));
-            goalPoints.add(new Point(goalCoin.x + sign * 2.1, goalCoin.y));
             goalPoints.add(new Point(goalCoin.x, goalCoin.y + 2.1));
             goalPoints.add(new Point(goalCoin.x, goalCoin.y - 2.1));
+            goalPoints.add(new Point(goalCoin.x + sign * 2.1, goalCoin.y));
         }
         // Find the coin furthest away
         List<Integer> usedCoins = new Vector<Integer>();
@@ -646,8 +621,8 @@ public class Player implements flip.sim.Player {
             goalCoinMap.add(new Pair(goalPoint, coinIndex));
             usedCoins.add(coinIndex);
         }
-        //Log.log("goalPoints " + goalPoints);
-        //Log.log("Trapper_IDs " + Trapper_IDs);
+        Log.log("goalPoints " + goalPoints);
+        Log.log("Trapper_IDs " + Trapper_IDs);
         if (Trapper_IDs.size() == goalPoints.size()) {
             currentState = State.TRAPPING_BLITZ_INCOMPLETE;
             return moves;
@@ -684,21 +659,21 @@ public class Player implements flip.sim.Player {
         return null;
     }
 
-        public List<Point> getGapStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
-            //Add all the points at the valid range of formming wall
-            List<Point> wallList = new ArrayList<>();
-            for (Point point : opponent_pieces.values()) {
-                if (
-                        (
-                                !isplayer1 && point.x > wall_back && point.x < wall_front
-                        ) || (
-                                isplayer1 && point.x < -wall_back && point.x > -wall_front
-                        )
-                )
-                    wallList.add(point);
-            }
-            return wallList;
+    public List<Point> getGapStrategyShouldBeUsed(HashMap<Integer, Point> opponent_pieces) {
+        //Add all the points at the valid range of formming wall
+        List<Point> wallList = new ArrayList<>();
+        for (Point point : opponent_pieces.values()) {
+            if (
+                    (
+                            !isplayer1 && point.x > wall_back && point.x < wall_front
+                    ) || (
+                            isplayer1 && point.x < -wall_back && point.x > -wall_front
+                    )
+            )
+                wallList.add(point);
         }
+        return wallList;
+    }
 
     public boolean checkIfWallFlipShouldBePrepared(HashMap<Integer, Point> player_pieces) {
         for (Point coin : player_pieces.values()) {
@@ -709,56 +684,56 @@ public class Player implements flip.sim.Player {
         return false;
     }
 
-        public List<Pair<Integer, Point>> getGapFindMoves(
-                List<Pair<Integer, Point>> moves,
-                Integer num_moves,
-                HashMap<Integer, Point> player_pieces,
-                HashMap<Integer, Point> opponent_pieces
-        ) {
-            List<Point> list = getGapStrategyShouldBeUsed(opponent_pieces);
-            Collections.sort(list, (a, b) -> Double.compare(b.y, a.y));
-            if(list.size() == 0) {
-                return moves;
-            }
-            // Add the bottom line
-            list.add(new Point(list.get(list.size() - 1).x, -20));
-            double maxGap = -1;
-            double top = -1;
-            double down = -1;
-            Point pre = new Point(list.get(0).x, 20);
-            double x = -1;
-            for (int i = 0; i < list.size(); i++) {
-                double gap = pre.y - list.get(i).y;
-                if (gap > maxGap) {
-                    top = pre.y;
-                    down = list.get(i).y;
-                    maxGap = gap;
-                    x = isplayer1 ? Math.min(pre.x, list.get(i).x) : Math.max(pre.x, list.get(i).x);
-                }
-                pre = list.get(i);
-            }
-            if(x > sign * 21) {
-                x = sign * 21;
-            }
-            Point gapPoint = new Point(x, (top + down) / 2);
-            // For now, just move the quickest one that falls into the maximum gap.
-            int minId = -1;
-            double minDis = Integer.MAX_VALUE;
-            for (Map.Entry<Integer, Point> entry : player_pieces.entrySet()) {
-                Point curr_position = entry.getValue();
-                Pair<Integer, Point> move = new Pair<Integer, Point>(entry.getKey(), new Point(curr_position.x + sign * 2, curr_position.y));
-                if (shouldStop(player_pieces, opponent_pieces, entry.getKey()) || !check_validity(move, player_pieces, opponent_pieces))
-                    continue;
-                Point p = entry.getValue();
-                double dist = getDistance(p, gapPoint);
-                if (dist < minDis) {
-                    minDis = dist;
-                    minId = entry.getKey();
-                }
-            }
-            Log.log("Gap Point: " + gapPoint.x + "," + gapPoint.y);
-            return findMovesToPoint(moves, minId, player_pieces.get(minId), gapPoint, num_moves, player_pieces, opponent_pieces);
+    public List<Pair<Integer, Point>> getGapFindMoves(
+            List<Pair<Integer, Point>> moves,
+            Integer num_moves,
+            HashMap<Integer, Point> player_pieces,
+            HashMap<Integer, Point> opponent_pieces
+    ) {
+        List<Point> list = getGapStrategyShouldBeUsed(opponent_pieces);
+        Collections.sort(list, (a, b) -> Double.compare(b.y, a.y));
+        if (list.size() == 0) {
+            return moves;
         }
+        // Add the bottom line
+        list.add(new Point(list.get(list.size() - 1).x, -20));
+        double maxGap = -1;
+        double top = -1;
+        double down = -1;
+        Point pre = new Point(list.get(0).x, 20);
+        double x = -1;
+        for (int i = 0; i < list.size(); i++) {
+            double gap = pre.y - list.get(i).y;
+            if (gap > maxGap) {
+                top = pre.y;
+                down = list.get(i).y;
+                maxGap = gap;
+                x = isplayer1 ? Math.min(pre.x, list.get(i).x) : Math.max(pre.x, list.get(i).x);
+            }
+            pre = list.get(i);
+        }
+        if (x > sign * 21) {
+            x = sign * 21;
+        }
+        Point gapPoint = new Point(x, (top + down) / 2);
+        // For now, just move the quickest one that falls into the maximum gap.
+        int minId = -1;
+        double minDis = Integer.MAX_VALUE;
+        for (Map.Entry<Integer, Point> entry : player_pieces.entrySet()) {
+            Point curr_position = entry.getValue();
+            Pair<Integer, Point> move = new Pair<Integer, Point>(entry.getKey(), new Point(curr_position.x + sign * 2, curr_position.y));
+            if (shouldStop(player_pieces, opponent_pieces, entry.getKey()) || !check_validity(move, player_pieces, opponent_pieces))
+                continue;
+            Point p = entry.getValue();
+            double dist = getDistance(p, gapPoint);
+            if (dist < minDis) {
+                minDis = dist;
+                minId = entry.getKey();
+            }
+        }
+        Log.log("Gap Point: " + gapPoint.x + "," + gapPoint.y);
+        return findMovesToPoint(moves, minId, player_pieces.get(minId), gapPoint, num_moves, player_pieces, opponent_pieces);
+    }
 
     public List<Pair<Integer, Point>> getWallMoves(
             List<Pair<Integer, Point>> moves,
@@ -1129,39 +1104,39 @@ public class Player implements flip.sim.Player {
     ) {
         int low1 = Integer.MAX_VALUE, low2 = Integer.MAX_VALUE, low1Id = -1, low2Id = -1;
 
-            for (int i = 0; i < n; i++) {
-                Point curr_position = player_pieces.get(i);
-                if (shouldStop(player_pieces, opponent_pieces, i))
-                    continue;
-                int count = 0;
-                for (Point point : opponent_pieces.values()) {
-                    // Two lines parameters
-                    double k1 = -sign * distance / density_cone_height;
-                    double b1 = curr_position.y - k1 * (curr_position.x - sign * density_lane_gap);
-                    double k2 = sign * distance / density_cone_height;
-                    double b2 = curr_position.y - k2 * (curr_position.x - sign * density_lane_gap);
-                    double x = point.x;
-                    double y = point.y;
-                    boolean condition1 = y < (curr_position.y + distance);
-                    boolean condition2 = y > (curr_position.y - distance);
-                    boolean condition3 = (x * k1 + b1 - y) < 0;
-                    boolean condition4 = (x * k2 + b2 - y) > 0;
-                    if (condition1 && condition2 && condition3 && condition4)
-                        count++;
-                }
-                if (low1 > count) {
-                    low2 = low1;
-                    low2Id = low1Id;
-                    low1 = count;
-                    low1Id = i;
-                } else if (low2 > count) {
-                    low2 = count;
-                    low2Id = i;
-                }
+        for (int i = 0; i < n; i++) {
+            Point curr_position = player_pieces.get(i);
+            if (shouldStop(player_pieces, opponent_pieces, i))
+                continue;
+            int count = 0;
+            for (Point point : opponent_pieces.values()) {
+                // Two lines parameters
+                double k1 = -sign * distance / density_cone_height;
+                double b1 = curr_position.y - k1 * (curr_position.x - sign * density_lane_gap);
+                double k2 = sign * distance / density_cone_height;
+                double b2 = curr_position.y - k2 * (curr_position.x - sign * density_lane_gap);
+                double x = point.x;
+                double y = point.y;
+                boolean condition1 = y < (curr_position.y + distance);
+                boolean condition2 = y > (curr_position.y - distance);
+                boolean condition3 = (x * k1 + b1 - y) < 0;
+                boolean condition4 = (x * k2 + b2 - y) > 0;
+                if (condition1 && condition2 && condition3 && condition4)
+                    count++;
             }
-            if (low1Id != -1) {
-                Point point1 = player_pieces.get(low1Id);
-                return findMovesToPoint(moves, low1Id, point1, new Point(sign * 40, point1.y), num_moves, player_pieces, opponent_pieces);
+            if (low1 > count) {
+                low2 = low1;
+                low2Id = low1Id;
+                low1 = count;
+                low1Id = i;
+            } else if (low2 > count) {
+                low2 = count;
+                low2Id = i;
+            }
+        }
+        if (low1Id != -1) {
+            Point point1 = player_pieces.get(low1Id);
+            return findMovesToPoint(moves, low1Id, point1, new Point(sign * 40, point1.y), num_moves, player_pieces, opponent_pieces);
 //                Pair<Integer, Point> move1 = new Pair<Integer, Point>(low1Id, new Point(point1.x + sign * 2, point1.y));
 //                moves.add(move1);
 //                Pair<Integer, Point> move2 = new Pair<Integer, Point>(low1Id, new Point(point1.x + sign * 4, point1.y));
@@ -1176,9 +1151,9 @@ public class Player implements flip.sim.Player {
 //                } else {
 //
 //                }
-            }
-            return moves;
         }
+        return moves;
+    }
 
     public List<Pair<Integer, Point>> getWallFlipPrepareMoves(
             List<Pair<Integer, Point>> moves,
