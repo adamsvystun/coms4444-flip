@@ -153,58 +153,62 @@ public class Player implements flip.sim.Player {
 
             List<Pair<Integer, Point>> moves = new ArrayList<Pair<Integer, Point>>();
 
-            switch (currentState) {
-                case TRAPPING:{
-                    moves = getTrappingMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case TRAPPING_BLITZ_INCOMPLETE:{
-                    moves = getBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    if (currentState == State.TRAPPING_BLITZ_COMPLETE && moves.size()<num_moves){
-                        moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
+                switch (currentState) {
+                    case TRAPPING:{
+                        moves = getTrappingMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        break;
                     }
-                    break;
+                    case TRAPPING_BLITZ_INCOMPLETE:{
+                        Log.log("In Trapping Blitz Incomplete");
+                        moves = getBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        if (currentState == State.TRAPPING_BLITZ_COMPLETE && moves.size()<num_moves){
+                            Log.log("Edge moving to getPostBlitzMoves");
+                            moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        }
+                        break;
+                    }
+                    case TRAPPING_BLITZ_COMPLETE:{
+                        Log.log("In Trapping Blitz COMPLETE");
+                        moves = getPostBlitzMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        break;
+                    }
+                    case WALL_BUILDING: {
+                        moves = getWallMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        break;
+                    }
+                    case FINDING_GAP: {
+                        moves = getGapFindMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        break;
+                    }
+                    case FORWARD: {
+                        moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        break;
+                    }
+                    case WALL_FLIP_PREPARE: {
+                        moves = getWallFlipPrepareMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        break;
+                    }
+                    case CHICKEN_GAME: {
+                        moves = getChichenGameMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        break;
+                    }
+                    case BFS: {
+                        moves = getBFSMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        break;
+                    }
+                    default:
+                    case RANDOM: {
+                        moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
+                        break;
+                    }
                 }
-                case TRAPPING_BLITZ_COMPLETE:{
-                    break;
-                }
-                case WALL_BUILDING: {
-                    moves = getWallMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case FINDING_GAP: {
-                    moves = getGapFindMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    Log.log("Moves: " + moves.size());
-                    break;
-                }
-                case FORWARD: {
+                if (moves.size() < num_moves) {
                     moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
                 }
-                case WALL_FLIP_PREPARE: {
-                    moves = getWallFlipPrepareMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case CHICKEN_GAME: {
-                    moves = getChichenGameMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                case BFS: {
-                    moves = getBFSMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
-                }
-                default:
-                case RANDOM: {
+                if (moves.size() < num_moves) {
                     moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
-                    break;
                 }
-            }
-            if (moves.size() < num_moves) {
-                moves = getDensityMoves(moves, num_moves, player_pieces, opponent_pieces);
-            }
-            if (moves.size() < num_moves) {
-                moves = getRandomMoves(moves, num_moves, player_pieces, opponent_pieces);
-            }
+
 
             return moves;
         }
@@ -215,8 +219,82 @@ public class Player implements flip.sim.Player {
             Integer num_moves,
             HashMap<Integer, Point> player_pieces,
             HashMap<Integer, Point> opponent_pieces
-        ){
-            // Move our fixed
+        ) {
+            // Move our fixed "trapper coins"
+            for (int id_index = Trapper_IDs.size()-1; id_index < 0; id_index -= 1) {
+                if (moves.size() == 2) {
+                    return moves;
+                }
+                int id = Trapper_IDs.get(id_index);
+                Point curr_position = player_pieces.get(id);
+                if ((isplayer1 && curr_position.x < -threshold) || (!isplayer1 && curr_position.x > threshold)) {
+                    continue;
+                }
+                // Focus on moving them to the goal.
+                for (int offset = 0; offset < 8 ; offset +=1) {
+                    if (moves.size() == 2) {
+                        return moves;
+                    }
+                    if ((isplayer1 && curr_position.x < -threshold) || (!isplayer1 && curr_position.x > threshold)) {
+                        break;
+                    }
+                    double theta_up = 0;
+                    double theta_down = 0;
+                    double delta_x = 0;
+                    double delta_y_up = 0;
+                    double delta_y_down = 0;
+                    Point new_position_up = new Point(curr_position);
+                    Point new_position_down = new Point(curr_position);
+                    if (isplayer1) {
+                        // going left...
+                        theta_up = (1 - offset * .1) * Math.PI;
+                        // Try down 225 degrees
+                        theta_down = (1 + offset * .1) * Math.PI;
+
+                        delta_x = diameter_piece * Math.cos(theta_up);
+                        delta_y_up = diameter_piece * Math.sin(theta_up);
+                        delta_y_down = diameter_piece * Math.sin(theta_down);
+
+                        new_position_up.x -= delta_x;
+                        new_position_down.x -= delta_x;
+
+                        new_position_up.y += delta_y_up;
+                        new_position_down.y += delta_y_down;
+
+                    } else {
+                        // going right.
+                        // Try up 45 degrees
+                        theta_up = (0 + offset * .1) * Math.PI;
+                        // Try down 315 degrees
+                        theta_down = (0 - offset * .1) * Math.PI;
+
+                        delta_x = diameter_piece * Math.cos(theta_up);
+                        delta_y_up = diameter_piece * Math.sin(theta_up);
+                        delta_y_down = diameter_piece * Math.sin(theta_down);
+
+                        new_position_up.x += delta_x;
+                        new_position_down.x += delta_x;
+
+                        new_position_up.y += delta_y_up;
+                        new_position_down.y += delta_y_down;
+
+
+                    }
+                    Pair<Integer, Point> move_up = new Pair<Integer, Point>(id, new_position_up);
+                    Pair<Integer, Point> move_down = new Pair<Integer, Point>(id, new_position_down);
+
+
+                    if (check_validity(move_up, player_pieces, opponent_pieces)) {
+                        moves.add(move_up);
+                        player_pieces.put(id, move_up.getValue());
+                        offset = 0;
+                    } else if (check_validity(move_down, player_pieces, opponent_pieces)) {
+                        moves.add(move_down);
+                        player_pieces.put(id, move_down.getValue());
+                        offset = 0;
+                    }
+                }
+            }
             return moves;
         }
 
@@ -257,9 +335,9 @@ public class Player implements flip.sim.Player {
                     if (isplayer1) {
                         // going left...
                         // try up 135 degrees
-                        theta_up = (1-degree_increase) * Math.PI;
+                        theta_up = (1 - degree_increase) * Math.PI;
                         // Try down 225 degrees
-                        theta_down = (1+degree_increase) * Math.PI;
+                        theta_down = (1 + degree_increase) * Math.PI;
 
                         delta_x = diameter_piece * Math.cos(theta_up);
                         delta_y_up = diameter_piece * Math.sin(theta_up);
@@ -274,9 +352,9 @@ public class Player implements flip.sim.Player {
                     } else {
                         // going right.
                         // Try up 45 degrees
-                        theta_up = (0+degree_increase) * Math.PI;
+                        theta_up = (0 + degree_increase) * Math.PI;
                         // Try down 315 degrees
-                        theta_down = (0-degree_increase) * Math.PI;
+                        theta_down = (0 - degree_increase) * Math.PI;
 
                         delta_x = diameter_piece * Math.cos(theta_up);
                         delta_y_up = diameter_piece * Math.sin(theta_up);
@@ -294,18 +372,16 @@ public class Player implements flip.sim.Player {
                     Pair<Integer, Point> move_down = new Pair<Integer, Point>(id, new_position_down);
 
 
-                    if (check_validity(move_up, player_pieces, opponent_pieces)){
+                    if (check_validity(move_up, player_pieces, opponent_pieces)) {
                         moves.add(move_up);
                         player_pieces.put(id, move_up.getValue());
-                        id-=1;
-                    }
-                    else if (check_validity(move_down, player_pieces, opponent_pieces)){
+                        id -= 1;
+                    } else if (check_validity(move_down, player_pieces, opponent_pieces)) {
                         moves.add(move_down);
                         player_pieces.put(id, move_down.getValue());
-                        id-=1;
+                        id -= 1;
                     }
                 }
-                degree_increase += .1;
             }
 
             return moves;
@@ -425,8 +501,8 @@ public class Player implements flip.sim.Player {
                 goalCoinMap.add(new Pair(goalPoint, coinIndex));
                 usedCoins.add(coinIndex);
             }
-            Log.log("goalPoints " + goalPoints);
-            Log.log("Trapper_IDs " + Trapper_IDs);
+            //Log.log("goalPoints " + goalPoints);
+            //Log.log("Trapper_IDs " + Trapper_IDs);
             if(Trapper_IDs.size() == goalPoints.size()) {
                 currentState = State.TRAPPING_BLITZ_INCOMPLETE;
                 return moves;
